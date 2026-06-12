@@ -5,7 +5,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "test": "playwright test",
+    "e2e": "playwright test",
     "lint": "eslint tests",
     "typecheck": "tsc --noEmit"
   },

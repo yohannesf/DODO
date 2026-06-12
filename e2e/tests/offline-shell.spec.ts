@@ -12,9 +12,7 @@ test('app shell installs and renders offline after first load', async ({
   await expect(page.getByRole('heading', { name: 'Enter Data' })).toBeVisible();
 
   // Installability surface: manifest is linked and resolvable.
-  const manifestHref = await page
-    .locator('link[rel="manifest"]')
-    .getAttribute('href');
+  const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
   expect(manifestHref).toBeTruthy();
   const manifest = await page.request.get(new URL(manifestHref!, page.url()).href);
   expect(manifest.ok()).toBe(true);

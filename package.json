@@ -13,7 +13,7 @@
     "lint": "turbo lint && prettier --check .",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
-    "e2e": "pnpm --filter @dodo/e2e test",
+    "e2e": "pnpm --filter @dodo/e2e e2e",
     "format": "prettier --write .",
     "license-check": "node scripts/check-licenses.mjs"
   },
