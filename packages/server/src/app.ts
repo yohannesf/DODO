@@ -8,6 +8,7 @@ import type { Db } from './db/index.js';
 import { checkHealth, type HealthDeps } from './services/health.js';
 import { registerMetadataRoutes } from './routes/metadata.js';
 import { registerAuthRoutes } from './routes/auth.js';
+import { registerSyncRoutes } from './routes/sync.js';
 import { authPlugin } from './plugins/auth.js';
 import { AppError } from './lib/errors.js';
 
@@ -65,6 +66,7 @@ export async function buildApp(opts: AppOptions) {
     });
     registerAuthRoutes(app, opts.db);
     registerMetadataRoutes(app, opts.db);
+    registerSyncRoutes(app, opts.db);
   }
 
   if (opts.webDistDir && fs.existsSync(opts.webDistDir)) {
