@@ -1,5 +1,35 @@
 # Changelog
 
+## M7 — Polish & release — v0.1.0 (2026-06-12)
+
+First tagged release. All seven milestones complete with their spec §12
+acceptance criteria green: PWA installable + fully offline app shell,
+metadata configurable end-to-end in the UI, custom sync protocol with
+idempotent replay and human conflict resolution, keyboard-first entry grid
+with offline validation, analytics with flow/stock semantics, offline
+dashboards and maps, and approval workflow with exports.
+
+- Demo seed (spec §11): `pnpm --filter @dodo/server seed` builds the WASH
+  programme — 41 org units over 3 levels with geometry, Sex × Age
+  disaggregation, 2 datasets, 12 indicators, and ~7,800 values across 18
+  months of deterministic sample data, pushed through the real sync path.
+- i18n foundation (spec §8.8): typesafe `t()` keys with an en catalogue and
+  fallback structure for fr/am/ar, locale applied from the user profile,
+  document direction flips for RTL locales. The shell, navigation, login,
+  and sync chip are migrated; remaining screens migrate incrementally and
+  new strings go through `t()`.
+- Accessibility: `prefers-reduced-motion` disables all transitions and
+  animations; focus rings, labels, and table semantics audited.
+- Docs: administrator guide, field guide, CONTRIBUTING, CODE_OF_CONDUCT
+  (Contributor Covenant 2.1), README with real screenshots generated from
+  the seeded instance.
+- Ops polish: compose passes `JWT_SECRET` and `DODO_ADMIN_PASSWORD`
+  through; map/chart code split keeps the main bundle within the precache
+  budget.
+
+Known limitations tracked for v0.2: event-level data, DHIS2 ADX export,
+full i18n catalogue coverage, dashboard PDF export, OPFS storage adapter.
+
 ## M6 — Workflow & ops (2026-06-12)
 
 Spec §12 M6 acceptance passes: the two-level approval chain e2e is green
