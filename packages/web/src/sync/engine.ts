@@ -5,12 +5,13 @@ import {
   MAX_PUSH_OPS,
   uuidv7,
   type DataValueUpsertPayload,
+  type SubmissionCompletePayload,
   type PullResponse,
   type PushResponse,
   type SyncCollection,
 } from '@dodo/shared';
 import { api } from '../api/client';
-import { getDb, hasDb } from '../db/db';
+import { getDb, hasDb, type ConflictRow } from '../db/db';
 
 export type SyncStatusKind = 'idle' | 'syncing' | 'offline' | 'attention';
 
@@ -201,6 +202,7 @@ async function applyPullPage(page: PullResponse): Promise<void> {
     db.datasets,
     db.dataValues,
     db.submissions,
+    db.validationRules,
     db.outbox,
     db.syncState,
   ];
@@ -304,4 +306,70 @@ export async function requestPersistentStorage(): Promise<void> {
   const persisted = await navigator.storage.persisted();
   const granted = persisted || (await navigator.storage.persist());
   useSyncStatus.setState({ storagePersisted: granted });
+}
+
+// --- submissions (M3) ---------------------------------------------------------
+
+export async function enqueueSubmissionComplete(
+  payload: SubmissionCompletePayload,
+): Promise<void> {
+  const db = getDb();
+  await db.transaction('rw', db.submissions, db.outbox, async () => {
+    await db.submissions.put({
+      ...payload,
+      status: 'completed',
+      completedAt: new Date().toISOString(),
+    });
+    await db.outbox.put({
+      opId: uuidv7(),
+      kind: 'submission.complete',
+      payload,
+      clientTs: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      tries: 0,
+      state: 'pending',
+    });
+  });
+  await refreshCounters();
+  scheduleSync();
+}
+
+// --- conflict resolution (spec §8.4): keep mine / take server / edit ----------
+
+export async function resolveConflictKeepMine(conflict: ConflictRow): Promise<void> {
+  const local = conflict.localPayload as DataValueUpsertPayload;
+  await enqueueDataValue(local, conflict.conflict.serverVersion);
+  await getDb().conflicts.update(conflict.opId, {
+    resolvedAt: new Date().toISOString(),
+  });
+  await refreshCounters();
+}
+
+export async function resolveConflictTakeServer(conflict: ConflictRow): Promise<void> {
+  const db = getDb();
+  const local = conflict.localPayload as DataValueUpsertPayload;
+  const row = await db.dataValues.get(local.id);
+  if (conflict.conflict.serverValue === null) {
+    if (row) await db.dataValues.delete(local.id);
+  } else if (row) {
+    await db.dataValues.put({
+      ...row,
+      value: conflict.conflict.serverValue,
+      version: conflict.conflict.serverVersion,
+    });
+  }
+  await db.conflicts.update(conflict.opId, { resolvedAt: new Date().toISOString() });
+  await refreshCounters();
+}
+
+export async function resolveConflictEdit(
+  conflict: ConflictRow,
+  newValue: string,
+): Promise<void> {
+  const local = conflict.localPayload as DataValueUpsertPayload;
+  await enqueueDataValue({ ...local, value: newValue }, conflict.conflict.serverVersion);
+  await getDb().conflicts.update(conflict.opId, {
+    resolvedAt: new Date().toISOString(),
+  });
+  await refreshCounters();
 }

@@ -6,12 +6,12 @@ import type { DataValueUpsertPayload } from '@dodo/shared';
 import { Button, TBody, Table, Td, Th, THead, Tr } from '../components';
 import { getDb, hasDb, type ConflictRow } from '../db/db';
 import {
-  enqueueDataValue,
   refreshCounters,
   requestPersistentStorage,
   syncNow,
   useSyncStatus,
 } from '../sync/engine';
+import { ConflictDialog } from '../entry/ConflictDialog';
 import { Page } from './Page';
 
 function StoragePanel() {
@@ -73,30 +73,14 @@ function StoragePanel() {
   );
 }
 
-function ConflictItem({ conflict }: { conflict: ConflictRow }) {
+function ConflictItem({
+  conflict,
+  onResolve,
+}: {
+  conflict: ConflictRow;
+  onResolve: (c: ConflictRow) => void;
+}) {
   const local = conflict.localPayload as DataValueUpsertPayload;
-
-  async function keepMine() {
-    await enqueueDataValue(local, conflict.conflict.serverVersion);
-    await getDb().conflicts.update(conflict.opId, {
-      resolvedAt: new Date().toISOString(),
-    });
-    await refreshCounters();
-  }
-  async function takeServer() {
-    const db = getDb();
-    const row = await db.dataValues.get(local.id);
-    if (row && conflict.conflict.serverValue !== null) {
-      await db.dataValues.put({
-        ...row,
-        value: conflict.conflict.serverValue,
-        version: conflict.conflict.serverVersion,
-      });
-    }
-    await db.conflicts.update(conflict.opId, { resolvedAt: new Date().toISOString() });
-    await refreshCounters();
-  }
-
   return (
     <Tr>
       <Td className="font-mono text-[11px]">{local.id.slice(0, 8)}…</Td>
@@ -108,11 +92,8 @@ function ConflictItem({ conflict }: { conflict: ConflictRow }) {
         {new Date(conflict.conflict.serverTs ?? conflict.createdAt).toLocaleString()}
       </Td>
       <Td className="text-right whitespace-nowrap">
-        <Button size="sm" onClick={() => void keepMine()}>
-          Keep mine
-        </Button>{' '}
-        <Button size="sm" onClick={() => void takeServer()}>
-          Take server
+        <Button size="sm" variant="primary" onClick={() => onResolve(conflict)}>
+          Resolve…
         </Button>
       </Td>
     </Tr>
@@ -121,6 +102,7 @@ function ConflictItem({ conflict }: { conflict: ConflictRow }) {
 
 export function SyncCenter() {
   const { status, lastSyncAt } = useSyncStatus();
+  const [resolving, setResolving] = useState<ConflictRow | null>(null);
 
   const outbox = useLiveQuery(
     () => (hasDb() ? getDb().outbox.orderBy('createdAt').toArray() : []),
@@ -218,7 +200,7 @@ export function SyncCenter() {
             </THead>
             <TBody>
               {conflicts.map((c) => (
-                <ConflictItem key={c.opId} conflict={c} />
+                <ConflictItem key={c.opId} conflict={c} onResolve={setResolving} />
               ))}
             </TBody>
           </Table>
@@ -230,6 +212,7 @@ export function SyncCenter() {
       </section>
 
       <StoragePanel />
+      <ConflictDialog conflict={resolving} onClose={() => setResolving(null)} />
     </Page>
   );
 }
