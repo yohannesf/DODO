@@ -497,3 +497,35 @@ export const syncPushJournal = pgTable('sync_push_journal', {
   opCount: integer('op_count').notNull(),
   ts: timestamp('ts', ts).notNull().defaultNow(),
 });
+
+// --- M3: validation rules (spec §4.1) ----------------------------------------
+
+export const validationOpEnum = pgEnum('validation_op', [
+  '<',
+  '<=',
+  '=',
+  '!=',
+  '>=',
+  '>',
+]);
+export const severityEnum = pgEnum('severity', ['warning', 'error']);
+
+export const validationRule = pgTable(
+  'validation_rule',
+  {
+    ...metaColumns,
+    name: text('name').notNull(),
+    code: text('code').notNull(),
+    leftExpr: text('left_expr').notNull(),
+    op: validationOpEnum('op').notNull(),
+    rightExpr: text('right_expr').notNull(),
+    severity: severityEnum('severity').notNull().default('warning'),
+    instruction: text('instruction').notNull().default(''),
+    datasetIds: uuid('datasets').array().notNull().default([]),
+  },
+  (t) => [
+    uniqueIndex('validation_rule_code_live')
+      .on(t.code)
+      .where(sql`deleted_at is null`),
+  ],
+);

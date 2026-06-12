@@ -67,6 +67,7 @@ export class DodoDb extends Dexie {
   syncState!: Table<SyncStateRow, string>;
   authCache!: Table<AuthCacheRow, string>;
   conflicts!: Table<ConflictRow, string>;
+  validationRules!: Table<Row, string>;
 
   constructor(name: string) {
     super(name);
@@ -89,6 +90,9 @@ export class DodoDb extends Dexie {
       syncState: 'id',
       authCache: 'id',
       conflicts: 'opId, resolvedAt, createdAt',
+    });
+    this.version(2).stores({
+      validationRules: 'id',
     });
   }
 }

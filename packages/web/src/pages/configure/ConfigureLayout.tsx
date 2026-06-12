@@ -8,6 +8,7 @@ const SECTIONS = [
   { to: '/configure/data-elements', label: 'Data elements' },
   { to: '/configure/option-sets', label: 'Option sets' },
   { to: '/configure/datasets', label: 'Datasets' },
+  { to: '/configure/validation', label: 'Validation' },
   { to: '/configure/users', label: 'Users & roles' },
 ] as const;
 

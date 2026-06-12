@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-query';
 import type {
   Category,
+  ValidationRule,
   CategoryCombo,
   CategoryOption,
   CategoryOptionCombo,
@@ -45,6 +46,10 @@ export const ENTITIES = {
   dataElements: { table: 'dataElements', path: '/api/metadata/data-elements' },
   datasets: { table: 'datasets', path: '/api/metadata/datasets' },
   roles: { table: 'roles', path: '/api/metadata/roles' },
+  validationRules: {
+    table: 'validationRules',
+    path: '/api/metadata/validation-rules',
+  },
   users: { table: 'users', path: '/api/metadata/users' },
 } as const satisfies Record<string, EntityConfig>;
 
@@ -63,6 +68,7 @@ export interface EntityTypes {
   datasets: Dataset;
   roles: Role;
   users: User;
+  validationRules: ValidationRule;
 }
 
 export function useEntityList<K extends EntityKey>(

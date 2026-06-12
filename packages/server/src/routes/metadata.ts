@@ -1,6 +1,7 @@
 // /api/metadata — route → zod validate → service → drizzle (CLAUDE.md).
 import type { FastifyInstance } from 'fastify';
 import { z, type ZodTypeAny } from 'zod';
+import { parseExpression } from '@dodo/shared';
 import {
   categoryInputSchema,
   categoryOptionInputSchema,
@@ -15,6 +16,7 @@ import {
   programInputSchema,
   roleInputSchema,
   userInputSchema,
+  validationRuleInputSchema,
 } from '@dodo/shared';
 import type { Db } from '../db/index.js';
 import {
@@ -26,6 +28,7 @@ import {
   program,
   role,
   dataElement,
+  validationRule,
 } from '../db/schema.js';
 import { dataElementInputSchema } from '@dodo/shared';
 import { makeCrud, type MetaTable } from '../services/metadata/crud.js';
@@ -108,6 +111,29 @@ export function registerMetadataRoutes(app: FastifyInstance, db: Db) {
     simple(option, 'option'),
   );
   crudRoutes('roles', roleInputSchema, roleInputSchema.partial(), simple(role, 'role'));
+  const validationRuleChecked = validationRuleInputSchema.superRefine((r, ctx) => {
+    for (const [field, src] of [
+      ['leftExpr', r.leftExpr],
+      ['rightExpr', r.rightExpr],
+    ] as const) {
+      if (src === undefined) continue;
+      try {
+        parseExpression(src);
+      } catch (err) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [field],
+          message: err instanceof Error ? err.message : 'invalid expression',
+        });
+      }
+    }
+  });
+  crudRoutes(
+    'validation-rules',
+    validationRuleChecked,
+    validationRuleInputSchema.partial(),
+    simple(validationRule, 'validation rule'),
+  );
   crudRoutes(
     'data-elements',
     dataElementInputSchema,

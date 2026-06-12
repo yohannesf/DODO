@@ -257,6 +257,31 @@ export const userSchema = userInputSchema.omit({ password: true }).extend({
 });
 export type User = z.infer<typeof userSchema>;
 
+// --- Validation rules (spec §4.1, M3) ---------------------------------------
+
+export const VALIDATION_OPS = ['<', '<=', '=', '!=', '>=', '>'] as const;
+export const validationOpSchema = z.enum(VALIDATION_OPS);
+export type ValidationOp = z.infer<typeof validationOpSchema>;
+
+export const SEVERITIES = ['warning', 'error'] as const;
+export const severitySchema = z.enum(SEVERITIES);
+export type Severity = z.infer<typeof severitySchema>;
+
+export const validationRuleInputSchema = z.object({
+  name: nameSchema,
+  code: codeSchema,
+  leftExpr: z.string().min(1).max(2000),
+  op: validationOpSchema,
+  rightExpr: z.string().min(1).max(2000),
+  severity: severitySchema.default('warning'),
+  instruction: z.string().max(500).default(''),
+  datasetIds: z.array(z.string().uuid()).default([]),
+});
+export const validationRuleSchema = validationRuleInputSchema.extend(
+  metaFieldsSchema.shape,
+);
+export type ValidationRule = z.infer<typeof validationRuleSchema>;
+
 // --- Metadata bundle (spec §8.5): one versioned, shareable JSON ------------
 
 export const METADATA_BUNDLE_VERSION = 1;
@@ -274,5 +299,6 @@ export const metadataBundleSchema = z.object({
   dataElements: z.array(dataElementSchema).default([]),
   datasets: z.array(datasetSchema).default([]),
   roles: z.array(roleSchema).default([]),
+  validationRules: z.array(validationRuleSchema).default([]),
 });
 export type MetadataBundle = z.infer<typeof metadataBundleSchema>;

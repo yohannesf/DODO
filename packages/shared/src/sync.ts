@@ -17,6 +17,7 @@ export const SYNC_COLLECTIONS = [
   'datasets',
   'dataValues',
   'submissions',
+  'validationRules',
 ] as const;
 export type SyncCollection = (typeof SYNC_COLLECTIONS)[number];
 

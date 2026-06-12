@@ -19,6 +19,7 @@ import {
   orgUnitLevel,
   program,
   role,
+  validationRule,
 } from '../../db/schema.js';
 import type { MetaTable } from './crud.js';
 import { listOrgUnits, createOrgUnit, updateOrgUnit } from './org-units.js';
@@ -42,6 +43,7 @@ export async function exportBundle(db: Db): Promise<MetadataBundle> {
     dataElements,
     datasets,
     roles,
+    validationRules,
   ] = await Promise.all([
     db.select().from(program).where(isNull(program.deletedAt)),
     db
@@ -66,6 +68,7 @@ export async function exportBundle(db: Db): Promise<MetadataBundle> {
     db.select().from(dataElement).where(isNull(dataElement.deletedAt)),
     listDatasets(db),
     db.select().from(role).where(isNull(role.deletedAt)),
+    db.select().from(validationRule).where(isNull(validationRule.deletedAt)),
   ]);
 
   return metadataBundleSchema.parse({
@@ -83,6 +86,7 @@ export async function exportBundle(db: Db): Promise<MetadataBundle> {
     dataElements,
     datasets,
     roles,
+    validationRules,
   });
 }
 
@@ -223,6 +227,16 @@ export async function importBundle(
       name: r.name,
       code: r.code,
       permissions: r.permissions,
+    }));
+    await upsert(validationRule, 'validationRules', bundle.validationRules, (r) => ({
+      name: r.name,
+      code: r.code,
+      leftExpr: r.leftExpr,
+      op: r.op,
+      rightExpr: r.rightExpr,
+      severity: r.severity,
+      instruction: r.instruction,
+      datasetIds: r.datasetIds,
     }));
 
     const existingDatasets = new Set((await listDatasets(tx)).map((d) => d.id));

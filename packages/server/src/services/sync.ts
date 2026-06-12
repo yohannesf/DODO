@@ -30,6 +30,7 @@ import {
   orgUnitLevel,
   program,
   submission,
+  validationRule,
   syncChangeLog,
   syncDevice,
   syncOp,
@@ -113,6 +114,7 @@ export async function pull(
     ['optionSets', optionSet as unknown as typeof program],
     ['options', option as unknown as typeof program],
     ['dataElements', dataElement as unknown as typeof program],
+    ['validationRules', validationRule as unknown as typeof program],
   ];
   for (const [coll, table] of flat) {
     const ids = idsBy(coll);

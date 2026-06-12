@@ -26,6 +26,7 @@ import { DataElementsPage } from './pages/configure/DataElements';
 import { OptionSetsPage } from './pages/configure/OptionSets';
 import { DatasetsPage } from './pages/configure/Datasets';
 import { UsersPage } from './pages/configure/Users';
+import { ValidationPage } from './pages/configure/Validation';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -107,6 +108,7 @@ const routeTree = rootRoute.addChildren([
       }),
       createRoute({ ...configureChild, path: 'option-sets', component: OptionSetsPage }),
       createRoute({ ...configureChild, path: 'datasets', component: DatasetsPage }),
+      createRoute({ ...configureChild, path: 'validation', component: ValidationPage }),
       createRoute({ ...configureChild, path: 'users', component: UsersPage }),
     ]),
   ]),
