@@ -57,6 +57,20 @@
       "when": 1781248926125,
       "tag": "0007_validation-rule-trigger",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1781251020660,
+      "tag": "0008_indicators-targets-rf",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781251021241,
+      "tag": "0009_m4-triggers",
+      "breakpoints": true
     }
   ]
 }

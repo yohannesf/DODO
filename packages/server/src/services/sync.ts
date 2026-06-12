@@ -31,9 +31,12 @@ import {
   option,
   optionSet,
   orgUnit,
+  indicator,
   orgUnitLevel,
   program,
+  resultsFramework,
   submission,
+  target,
   validationRule,
   syncChangeLog,
   syncDevice,
@@ -43,6 +46,7 @@ import {
 import { AppError, badRequest } from '../lib/errors.js';
 import { listCategoryCombos } from './metadata/category-combos.js';
 import { listDatasets } from './metadata/datasets.js';
+import { listRfNodes } from './metadata/rf-nodes.js';
 import { listOrgUnits } from './metadata/org-units.js';
 
 // --- scoping ----------------------------------------------------------------
@@ -119,6 +123,9 @@ export async function pull(
     ['options', option as unknown as typeof program],
     ['dataElements', dataElement as unknown as typeof program],
     ['validationRules', validationRule as unknown as typeof program],
+    ['indicators', indicator as unknown as typeof program],
+    ['resultsFrameworks', resultsFramework as unknown as typeof program],
+    ['targets', target as unknown as typeof program],
   ];
   for (const [coll, table] of flat) {
     const ids = idsBy(coll);
@@ -153,6 +160,13 @@ export async function pull(
     keep(
       'orgUnits',
       (await listOrgUnits(db)).filter((o) => ids.has(o.id) && inScope(scope, o.path)),
+    );
+  }
+  if (idsBy('rfNodes').length > 0) {
+    const ids = new Set(idsBy('rfNodes'));
+    keep(
+      'rfNodes',
+      (await listRfNodes(db)).filter((n) => ids.has(n.id)),
     );
   }
   if (idsBy('datasets').length > 0) {

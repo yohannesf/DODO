@@ -8,6 +8,7 @@ import {
   boolean,
   customType,
   date,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -526,6 +527,110 @@ export const validationRule = pgTable(
   (t) => [
     uniqueIndex('validation_rule_code_live')
       .on(t.code)
+      .where(sql`deleted_at is null`),
+  ],
+);
+
+// --- M4: indicators, targets, results framework (spec §4.1) ------------------
+
+export const indicatorTypeEnum = pgEnum('indicator_type', [
+  'number',
+  'percent',
+  'rate',
+  'per_thousand',
+  'per_ten_thousand',
+]);
+export const targetKindEnum = pgEnum('target_kind', ['baseline', 'target']);
+export const rfNodeKindEnum = pgEnum('rf_node_kind', [
+  'goal',
+  'outcome',
+  'output',
+  'activity',
+]);
+
+export const indicator = pgTable(
+  'indicator',
+  {
+    ...metaColumns,
+    name: text('name').notNull(),
+    code: text('code').notNull(),
+    description: text('description').notNull().default(''),
+    numeratorExpr: text('numerator_expr').notNull(),
+    denominatorExpr: text('denominator_expr').notNull().default('1'),
+    factor: doublePrecision('factor').notNull().default(1),
+    decimals: integer('decimals').notNull().default(1),
+    indicatorType: indicatorTypeEnum('indicator_type').notNull().default('number'),
+    annualized: boolean('annualized').notNull().default(false),
+    programId: uuid('program_id').references(() => program.id),
+  },
+  (t) => [
+    uniqueIndex('indicator_code_live')
+      .on(t.code)
+      .where(sql`deleted_at is null`),
+  ],
+);
+
+export const resultsFramework = pgTable(
+  'results_framework',
+  {
+    ...metaColumns,
+    name: text('name').notNull(),
+    code: text('code').notNull(),
+    programId: uuid('program_id').references(() => program.id),
+  },
+  (t) => [
+    uniqueIndex('results_framework_code_live')
+      .on(t.code)
+      .where(sql`deleted_at is null`),
+  ],
+);
+
+export const rfNode = pgTable(
+  'rf_node',
+  {
+    ...metaColumns,
+    frameworkId: uuid('framework_id')
+      .notNull()
+      .references(() => resultsFramework.id),
+    parentId: uuid('parent_id'),
+    kind: rfNodeKindEnum('kind').notNull(),
+    title: text('title').notNull(),
+    description: text('description').notNull().default(''),
+    sortOrder: integer('sort_order').notNull().default(0),
+  },
+  (t) => [index('rf_node_framework').on(t.frameworkId)],
+);
+
+export const rfNodeIndicators = pgTable(
+  'rf_node_indicators',
+  {
+    nodeId: uuid('node_id')
+      .notNull()
+      .references(() => rfNode.id),
+    indicatorId: uuid('indicator_id')
+      .notNull()
+      .references(() => indicator.id),
+  },
+  (t) => [primaryKey({ columns: [t.nodeId, t.indicatorId] })],
+);
+
+export const target = pgTable(
+  'target',
+  {
+    ...metaColumns,
+    indicatorId: uuid('indicator_id')
+      .notNull()
+      .references(() => indicator.id),
+    orgUnitId: uuid('org_unit_id')
+      .notNull()
+      .references(() => orgUnit.id),
+    period: text('period').notNull(),
+    value: doublePrecision('value').notNull(),
+    kind: targetKindEnum('kind').notNull(),
+  },
+  (t) => [
+    uniqueIndex('target_key_live')
+      .on(t.indicatorId, t.orgUnitId, t.period, t.kind)
       .where(sql`deleted_at is null`),
   ],
 );

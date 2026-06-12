@@ -14,7 +14,11 @@ import {
   orgUnitInputSchema,
   orgUnitLevelInputSchema,
   programInputSchema,
+  indicatorInputSchema,
+  resultsFrameworkInputSchema,
+  rfNodeInputSchema,
   roleInputSchema,
+  targetInputSchema,
   userInputSchema,
   validationRuleInputSchema,
 } from '@dodo/shared';
@@ -28,6 +32,9 @@ import {
   program,
   role,
   dataElement,
+  indicator,
+  resultsFramework,
+  target,
   validationRule,
 } from '../db/schema.js';
 import { dataElementInputSchema } from '@dodo/shared';
@@ -36,6 +43,7 @@ import * as orgUnits from '../services/metadata/org-units.js';
 import * as combos from '../services/metadata/category-combos.js';
 import * as datasets from '../services/metadata/datasets.js';
 import * as users from '../services/metadata/users.js';
+import * as rfNodes from '../services/metadata/rf-nodes.js';
 import { exportBundle, importBundle } from '../services/metadata/bundle.js';
 
 const idParam = z.object({ id: z.string().uuid() });
@@ -111,6 +119,49 @@ export function registerMetadataRoutes(app: FastifyInstance, db: Db) {
     simple(option, 'option'),
   );
   crudRoutes('roles', roleInputSchema, roleInputSchema.partial(), simple(role, 'role'));
+  const indicatorChecked = indicatorInputSchema.superRefine((r, ctx) => {
+    for (const [field, src] of [
+      ['numeratorExpr', r.numeratorExpr],
+      ['denominatorExpr', r.denominatorExpr],
+    ] as const) {
+      if (src === undefined) continue;
+      try {
+        parseExpression(src);
+      } catch (err) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [field],
+          message: err instanceof Error ? err.message : 'invalid expression',
+        });
+      }
+    }
+  });
+  crudRoutes(
+    'indicators',
+    indicatorChecked,
+    indicatorInputSchema.partial(),
+    simple(indicator, 'indicator'),
+  );
+  crudRoutes(
+    'results-frameworks',
+    resultsFrameworkInputSchema,
+    resultsFrameworkInputSchema.partial(),
+    simple(resultsFramework, 'results framework'),
+  );
+  crudRoutes('rf-nodes', rfNodeInputSchema, rfNodeInputSchema.partial(), {
+    list: rfNodes.listRfNodes,
+    get: rfNodes.getRfNode,
+    create: rfNodes.createRfNode,
+    update: rfNodes.updateRfNode,
+    delete: rfNodes.deleteRfNode,
+  });
+  crudRoutes(
+    'targets',
+    targetInputSchema,
+    targetInputSchema.partial(),
+    simple(target, 'target'),
+  );
+
   const validationRuleChecked = validationRuleInputSchema.superRefine((r, ctx) => {
     for (const [field, src] of [
       ['leftExpr', r.leftExpr],

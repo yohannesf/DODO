@@ -18,6 +18,10 @@ export const SYNC_COLLECTIONS = [
   'dataValues',
   'submissions',
   'validationRules',
+  'indicators',
+  'resultsFrameworks',
+  'rfNodes',
+  'targets',
 ] as const;
 export type SyncCollection = (typeof SYNC_COLLECTIONS)[number];
 

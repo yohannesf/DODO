@@ -282,6 +282,71 @@ export const validationRuleSchema = validationRuleInputSchema.extend(
 );
 export type ValidationRule = z.infer<typeof validationRuleSchema>;
 
+// --- Indicators, targets, results framework (spec §4.1, M4) -----------------
+
+export const INDICATOR_TYPES = [
+  'number',
+  'percent',
+  'rate',
+  'per_thousand',
+  'per_ten_thousand',
+] as const;
+export const indicatorTypeSchema = z.enum(INDICATOR_TYPES);
+export type IndicatorType = z.infer<typeof indicatorTypeSchema>;
+
+export const indicatorInputSchema = z.object({
+  name: nameSchema,
+  code: codeSchema,
+  description: z.string().max(2000).default(''),
+  numeratorExpr: z.string().min(1).max(2000),
+  denominatorExpr: z.string().min(1).max(2000).default('1'),
+  factor: z.number().finite().default(1),
+  decimals: z.number().int().min(0).max(6).default(1),
+  indicatorType: indicatorTypeSchema.default('number'),
+  annualized: z.boolean().default(false),
+  programId: z.string().uuid().nullable().default(null),
+});
+export const indicatorSchema = indicatorInputSchema.extend(metaFieldsSchema.shape);
+export type Indicator = z.infer<typeof indicatorSchema>;
+
+export const TARGET_KINDS = ['baseline', 'target'] as const;
+export const targetKindSchema = z.enum(TARGET_KINDS);
+
+export const targetInputSchema = z.object({
+  indicatorId: z.string().uuid(),
+  orgUnitId: z.string().uuid(),
+  period: z.string().min(4),
+  value: z.number().finite(),
+  kind: targetKindSchema,
+});
+export const targetSchema = targetInputSchema.extend(metaFieldsSchema.shape);
+export type Target = z.infer<typeof targetSchema>;
+
+export const RF_NODE_KINDS = ['goal', 'outcome', 'output', 'activity'] as const;
+export const rfNodeKindSchema = z.enum(RF_NODE_KINDS);
+
+export const resultsFrameworkInputSchema = z.object({
+  name: nameSchema,
+  code: codeSchema,
+  programId: z.string().uuid().nullable().default(null),
+});
+export const resultsFrameworkSchema = resultsFrameworkInputSchema.extend(
+  metaFieldsSchema.shape,
+);
+export type ResultsFramework = z.infer<typeof resultsFrameworkSchema>;
+
+export const rfNodeInputSchema = z.object({
+  frameworkId: z.string().uuid(),
+  parentId: z.string().uuid().nullable().default(null),
+  kind: rfNodeKindSchema,
+  title: nameSchema,
+  description: z.string().max(2000).default(''),
+  sortOrder: z.number().int().min(0).default(0),
+  indicatorIds: z.array(z.string().uuid()).default([]),
+});
+export const rfNodeSchema = rfNodeInputSchema.extend(metaFieldsSchema.shape);
+export type RfNode = z.infer<typeof rfNodeSchema>;
+
 // --- Metadata bundle (spec §8.5): one versioned, shareable JSON ------------
 
 export const METADATA_BUNDLE_VERSION = 1;
@@ -300,5 +365,9 @@ export const metadataBundleSchema = z.object({
   datasets: z.array(datasetSchema).default([]),
   roles: z.array(roleSchema).default([]),
   validationRules: z.array(validationRuleSchema).default([]),
+  indicators: z.array(indicatorSchema).default([]),
+  resultsFrameworks: z.array(resultsFrameworkSchema).default([]),
+  rfNodes: z.array(rfNodeSchema).default([]),
+  targets: z.array(targetSchema).default([]),
 });
 export type MetadataBundle = z.infer<typeof metadataBundleSchema>;

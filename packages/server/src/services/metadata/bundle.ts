@@ -16,9 +16,12 @@ import {
   dataElement,
   optionSet,
   option,
+  indicator,
   orgUnitLevel,
   program,
+  resultsFramework,
   role,
+  target,
   validationRule,
 } from '../../db/schema.js';
 import type { MetaTable } from './crud.js';
@@ -29,6 +32,7 @@ import {
   updateCategoryCombo,
 } from './category-combos.js';
 import { listDatasets, createDataset, updateDataset } from './datasets.js';
+import { createRfNode, listRfNodes, updateRfNode } from './rf-nodes.js';
 
 export async function exportBundle(db: Db): Promise<MetadataBundle> {
   const [
@@ -44,6 +48,10 @@ export async function exportBundle(db: Db): Promise<MetadataBundle> {
     datasets,
     roles,
     validationRules,
+    indicators,
+    resultsFrameworks,
+    rfNodes,
+    targets,
   ] = await Promise.all([
     db.select().from(program).where(isNull(program.deletedAt)),
     db
@@ -69,6 +77,10 @@ export async function exportBundle(db: Db): Promise<MetadataBundle> {
     listDatasets(db),
     db.select().from(role).where(isNull(role.deletedAt)),
     db.select().from(validationRule).where(isNull(validationRule.deletedAt)),
+    db.select().from(indicator).where(isNull(indicator.deletedAt)),
+    db.select().from(resultsFramework).where(isNull(resultsFramework.deletedAt)),
+    listRfNodes(db),
+    db.select().from(target).where(isNull(target.deletedAt)),
   ]);
 
   return metadataBundleSchema.parse({
@@ -87,6 +99,10 @@ export async function exportBundle(db: Db): Promise<MetadataBundle> {
     datasets,
     roles,
     validationRules,
+    indicators,
+    resultsFrameworks,
+    rfNodes,
+    targets,
   });
 }
 
@@ -237,6 +253,58 @@ export async function importBundle(
       severity: r.severity,
       instruction: r.instruction,
       datasetIds: r.datasetIds,
+    }));
+
+    await upsert(indicator, 'indicators', bundle.indicators, (r) => ({
+      name: r.name,
+      code: r.code,
+      description: r.description,
+      numeratorExpr: r.numeratorExpr,
+      denominatorExpr: r.denominatorExpr,
+      factor: r.factor,
+      decimals: r.decimals,
+      indicatorType: r.indicatorType,
+      annualized: r.annualized,
+      programId: r.programId,
+    }));
+    await upsert(
+      resultsFramework,
+      'resultsFrameworks',
+      bundle.resultsFrameworks,
+      (r) => ({
+        name: r.name,
+        code: r.code,
+        programId: r.programId,
+      }),
+    );
+    const existingNodes = new Set((await listRfNodes(tx)).map((n) => n.id));
+    const nodesOrdered = [...bundle.rfNodes].sort(
+      (a, b) => Number(a.parentId !== null) - Number(b.parentId !== null),
+    );
+    for (const node of nodesOrdered) {
+      const input = {
+        frameworkId: node.frameworkId,
+        parentId: node.parentId,
+        kind: node.kind,
+        title: node.title,
+        description: node.description,
+        sortOrder: node.sortOrder,
+        indicatorIds: node.indicatorIds,
+      };
+      if (existingNodes.has(node.id)) {
+        await updateRfNode(tx, node.id, input);
+        count(updated, 'rfNodes');
+      } else {
+        await createRfNode(tx, input, undefined, node.id);
+        count(created, 'rfNodes');
+      }
+    }
+    await upsert(target, 'targets', bundle.targets, (r) => ({
+      indicatorId: r.indicatorId,
+      orgUnitId: r.orgUnitId,
+      period: r.period,
+      value: r.value,
+      kind: r.kind,
     }));
 
     const existingDatasets = new Set((await listDatasets(tx)).map((d) => d.id));
