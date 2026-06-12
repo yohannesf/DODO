@@ -356,3 +356,144 @@ export const userOrgUnits = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.orgUnitId, t.scope] })],
 );
+
+// --- M2: sessions, data tables (spec §4.2), sync ledger (spec §6) -----------
+
+export const submissionStatusEnum = pgEnum('submission_status', [
+  'draft',
+  'completed',
+  'approved',
+  'rejected',
+]);
+export const auditActionEnum = pgEnum('audit_action', [
+  'create',
+  'update',
+  'delete',
+  'sync_conflict',
+]);
+export const changeOpEnum = pgEnum('change_op', ['upsert', 'delete']);
+
+export const session = pgTable(
+  'session',
+  {
+    // sha256 of the random session token — the raw token only lives in the cookie
+    id: text('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id),
+    expiresAt: timestamp('expires_at', ts).notNull(),
+    createdAt: timestamp('created_at', ts).notNull().defaultNow(),
+    ip: text('ip'),
+    userAgent: text('user_agent'),
+  },
+  (t) => [index('session_user').on(t.userId)],
+);
+
+export const dataValue = pgTable(
+  'data_value',
+  {
+    id: uuid('id').primaryKey(), // client-generated UUIDv7 (idempotency key)
+    dataElementId: uuid('data_element_id')
+      .notNull()
+      .references(() => dataElement.id),
+    orgUnitId: uuid('org_unit_id')
+      .notNull()
+      .references(() => orgUnit.id),
+    period: text('period').notNull(),
+    categoryOptionComboId: uuid('category_option_combo_id').notNull(),
+    value: text('value').notNull(),
+    comment: text('comment').notNull().default(''),
+    submissionId: uuid('submission_id'),
+    storedBy: uuid('stored_by'),
+    clientTs: timestamp('client_ts', ts),
+    version: integer('version').notNull().default(1),
+    createdAt: timestamp('created_at', ts).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', ts).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('data_value_cell').on(
+      t.dataElementId,
+      t.orgUnitId,
+      t.period,
+      t.categoryOptionComboId,
+    ),
+    index('data_value_org_unit').on(t.orgUnitId, t.period),
+  ],
+);
+
+export const dataValueAudit = pgTable(
+  'data_value_audit',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    dataValueId: uuid('data_value_id').notNull(),
+    oldValue: text('old_value'),
+    newValue: text('new_value'),
+    actor: uuid('actor'),
+    ts: timestamp('ts', ts).notNull().defaultNow(),
+    action: auditActionEnum('action').notNull(),
+  },
+  (t) => [index('data_value_audit_value').on(t.dataValueId)],
+);
+
+export const submission = pgTable(
+  'submission',
+  {
+    id: uuid('id').primaryKey(),
+    datasetId: uuid('dataset_id')
+      .notNull()
+      .references(() => dataset.id),
+    orgUnitId: uuid('org_unit_id')
+      .notNull()
+      .references(() => orgUnit.id),
+    period: text('period').notNull(),
+    status: submissionStatusEnum('status').notNull().default('draft'),
+    completedBy: uuid('completed_by'),
+    completedAt: timestamp('completed_at', ts),
+    note: text('note').notNull().default(''),
+    version: integer('version').notNull().default(1),
+    createdAt: timestamp('created_at', ts).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', ts).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('submission_key').on(t.datasetId, t.orgUnitId, t.period)],
+);
+
+// One global monotonic sequence — THE sync cursor. Triggers on all synced
+// tables append here (see migration 0004).
+export const syncChangeLog = pgTable(
+  'sync_change_log',
+  {
+    serverSeq: integer('server_seq').primaryKey().generatedAlwaysAsIdentity(),
+    collection: text('collection').notNull(),
+    rowId: uuid('row_id').notNull(),
+    op: changeOpEnum('op').notNull(),
+    ts: timestamp('ts', ts).notNull().defaultNow(),
+  },
+  (t) => [index('sync_change_log_collection').on(t.collection, t.serverSeq)],
+);
+
+export const syncDevice = pgTable('sync_device', {
+  deviceId: uuid('device_id').primaryKey(),
+  userId: uuid('user_id').notNull(),
+  lastSeen: timestamp('last_seen', ts).notNull().defaultNow(),
+  lastPushAt: timestamp('last_push_at', ts),
+  lastPullCursor: integer('last_pull_cursor'),
+});
+
+// Applied ops — replays return the original result (idempotent push, §6.1)
+export const syncOp = pgTable('sync_op', {
+  opId: uuid('op_id').primaryKey(),
+  deviceId: uuid('device_id').notNull(),
+  kind: text('kind').notNull(),
+  status: text('status').notNull(),
+  result: jsonb('result').notNull().default({}),
+  ts: timestamp('ts', ts).notNull().defaultNow(),
+});
+
+// Push batch journal for forensics (§6.3)
+export const syncPushJournal = pgTable('sync_push_journal', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  deviceId: uuid('device_id').notNull(),
+  batchHash: text('batch_hash').notNull(),
+  opCount: integer('op_count').notNull(),
+  ts: timestamp('ts', ts).notNull().defaultNow(),
+});
