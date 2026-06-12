@@ -1,5 +1,5 @@
-// Thin JSON fetch wrapper for /api. M1: Configure talks to the API directly;
-// M2 moves reads/writes behind Dexie + sync for the offline-first paths.
+// Thin JSON fetch wrapper for /api with bearer auth and one refresh-retry.
+// Admin/Configure reads stay online; field data paths go through Dexie.
 
 export class ApiError extends Error {
   constructor(
@@ -11,12 +11,34 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
-  const res = await fetch(url, {
+interface TokenProvider {
+  getToken: () => string | null;
+  refresh: () => Promise<boolean>;
+}
+
+let tokens: TokenProvider = { getToken: () => null, refresh: async () => false };
+
+export function setTokenProvider(provider: TokenProvider) {
+  tokens = provider;
+}
+
+async function rawRequest(method: string, url: string, body?: unknown) {
+  const token = tokens.getToken();
+  return fetch(url, {
     method,
-    headers: body === undefined ? {} : { 'content-type': 'application/json' },
+    headers: {
+      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+}
+
+async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
+  let res = await rawRequest(method, url, body);
+  if (res.status === 401 && (await tokens.refresh())) {
+    res = await rawRequest(method, url, body);
+  }
   if (res.status === 204) return undefined as T;
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
