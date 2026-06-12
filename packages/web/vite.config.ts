@@ -35,12 +35,23 @@ export default defineConfig({
         // clientsClaim controls the very first install only; updates still
         // wait for the user's reload (skipWaiting stays false).
         clientsClaim: true,
+        maximumFileSizeToCacheInBytes: 3_000_000,
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          map: ['maplibre-gl', 'pmtiles'],
+          charts: ['echarts/core', 'echarts/charts', 'echarts/components'],
+        },
+      },
+    },
+  },
   server: {
     proxy: { '/api': 'http://localhost:3000' },
   },

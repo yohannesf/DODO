@@ -213,6 +213,7 @@ async function applyPullPage(page: PullResponse): Promise<void> {
     db.resultsFrameworks,
     db.rfNodes,
     db.targets,
+    db.dashboards,
     db.outbox,
     db.syncState,
   ];

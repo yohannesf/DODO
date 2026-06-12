@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-query';
 import type {
   Category,
+  Dashboard,
   Indicator,
   ResultsFramework,
   RfNode,
@@ -61,6 +62,7 @@ export const ENTITIES = {
   },
   rfNodes: { table: 'rfNodes', path: '/api/metadata/rf-nodes' },
   targets: { table: 'targets', path: '/api/metadata/targets' },
+  dashboards: { table: 'dashboards', path: '/api/metadata/dashboards' },
   users: { table: 'users', path: '/api/metadata/users' },
 } as const satisfies Record<string, EntityConfig>;
 
@@ -84,6 +86,7 @@ export interface EntityTypes {
   resultsFrameworks: ResultsFramework;
   rfNodes: RfNode;
   targets: Target;
+  dashboards: Dashboard;
 }
 
 export function useEntityList<K extends EntityKey>(

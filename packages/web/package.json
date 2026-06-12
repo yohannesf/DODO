@@ -19,6 +19,8 @@
     "dexie": "^4.4.3",
     "dexie-react-hooks": "^4.4.0",
     "echarts": "^6.1.0",
+    "maplibre-gl": "^5.24.0",
+    "pmtiles": "^4.4.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "workbox-window": "^7.4.1",

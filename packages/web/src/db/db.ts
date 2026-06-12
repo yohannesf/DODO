@@ -72,6 +72,8 @@ export class DodoDb extends Dexie {
   resultsFrameworks!: Table<Row, string>;
   rfNodes!: Table<Row, string>;
   targets!: Table<Row, string>;
+  dashboards!: Table<Row, string>;
+  widgetCache!: Table<{ key: string; data: unknown; fetchedAt: string }, string>;
 
   constructor(name: string) {
     super(name);
@@ -103,6 +105,12 @@ export class DodoDb extends Dexie {
       resultsFrameworks: 'id',
       rfNodes: 'id, frameworkId, parentId',
       targets: 'id, indicatorId, [indicatorId+orgUnitId]',
+    });
+    this.version(4).stores({
+      dashboards: 'id',
+      // last-fetched analytics per widget → dashboards render offline with
+      // a "data as of" stamp (spec §8.6)
+      widgetCache: 'key',
     });
   }
 }
