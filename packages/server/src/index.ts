@@ -1,7 +1,7 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
-import { createPool } from './db/index.js';
+import { createDb, createPool } from './db/index.js';
 import { runMigrations } from './migrate.js';
 
 const config = loadConfig();
@@ -26,6 +26,7 @@ await migrateWithRetry();
 const pool = createPool(config.DATABASE_URL);
 
 const app = await buildApp({
+  db: createDb(pool),
   health: {
     dbPing: async () => {
       try {

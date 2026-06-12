@@ -44,6 +44,11 @@ export type Frequency = z.infer<typeof frequencySchema>;
 export const ORG_UNIT_SCOPES = ['data_entry', 'data_view'] as const;
 export const orgUnitScopeSchema = z.enum(ORG_UNIT_SCOPES);
 
+// Reserved `default` combo/COC ids — seeded by migration, identical on every
+// instance so bundles and undisaggregated values are portable.
+export const DEFAULT_CATEGORY_COMBO_ID = '019754a0-0000-7000-8000-00000000c0c0';
+export const DEFAULT_CATEGORY_OPTION_COMBO_ID = '019754a0-0000-7000-8000-00000000c0c1';
+
 export const codeSchema = z
   .string()
   .min(2)

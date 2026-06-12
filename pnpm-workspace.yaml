@@ -2,4 +2,8 @@ packages:
   - packages/*
   - e2e
 allowBuilds:
+  # optional native addons of testcontainers' ssh tunnel — not needed
+  cpu-features: false
   esbuild: true
+  protobufjs: false
+  ssh2: false
