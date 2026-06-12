@@ -8,6 +8,10 @@ import {
 } from '@tanstack/react-query';
 import type {
   Category,
+  Indicator,
+  ResultsFramework,
+  RfNode,
+  Target,
   ValidationRule,
   CategoryCombo,
   CategoryOption,
@@ -50,6 +54,13 @@ export const ENTITIES = {
     table: 'validationRules',
     path: '/api/metadata/validation-rules',
   },
+  indicators: { table: 'indicators', path: '/api/metadata/indicators' },
+  resultsFrameworks: {
+    table: 'resultsFrameworks',
+    path: '/api/metadata/results-frameworks',
+  },
+  rfNodes: { table: 'rfNodes', path: '/api/metadata/rf-nodes' },
+  targets: { table: 'targets', path: '/api/metadata/targets' },
   users: { table: 'users', path: '/api/metadata/users' },
 } as const satisfies Record<string, EntityConfig>;
 
@@ -69,6 +80,10 @@ export interface EntityTypes {
   roles: Role;
   users: User;
   validationRules: ValidationRule;
+  indicators: Indicator;
+  resultsFrameworks: ResultsFramework;
+  rfNodes: RfNode;
+  targets: Target;
 }
 
 export function useEntityList<K extends EntityKey>(

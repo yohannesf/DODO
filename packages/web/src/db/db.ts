@@ -68,6 +68,10 @@ export class DodoDb extends Dexie {
   authCache!: Table<AuthCacheRow, string>;
   conflicts!: Table<ConflictRow, string>;
   validationRules!: Table<Row, string>;
+  indicators!: Table<Row, string>;
+  resultsFrameworks!: Table<Row, string>;
+  rfNodes!: Table<Row, string>;
+  targets!: Table<Row, string>;
 
   constructor(name: string) {
     super(name);
@@ -93,6 +97,12 @@ export class DodoDb extends Dexie {
     });
     this.version(2).stores({
       validationRules: 'id',
+    });
+    this.version(3).stores({
+      indicators: 'id',
+      resultsFrameworks: 'id',
+      rfNodes: 'id, frameworkId, parentId',
+      targets: 'id, indicatorId, [indicatorId+orgUnitId]',
     });
   }
 }

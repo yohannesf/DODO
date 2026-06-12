@@ -209,6 +209,10 @@ async function applyPullPage(page: PullResponse): Promise<void> {
     db.dataValues,
     db.submissions,
     db.validationRules,
+    db.indicators,
+    db.resultsFrameworks,
+    db.rfNodes,
+    db.targets,
     db.outbox,
     db.syncState,
   ];
