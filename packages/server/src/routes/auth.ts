@@ -19,19 +19,23 @@ const cookieOpts = {
 } as const;
 
 export function registerAuthRoutes(app: FastifyInstance, db: Db) {
-  app.post('/api/auth/login', async (req, reply) => {
-    const { username, password } = loginRequestSchema.parse(req.body);
-    const { sessionToken, authUser } = await login(db, username, password, {
-      ip: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
-    reply.setCookie(SESSION_COOKIE, sessionToken, cookieOpts);
-    return loginResponseSchema.parse({
-      accessToken: app.signAccessToken(authUser),
-      expiresIn: ACCESS_TOKEN_TTL_SECONDS,
-      user: authUser,
-    });
-  });
+  app.post(
+    '/api/auth/login',
+    { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+    async (req, reply) => {
+      const { username, password } = loginRequestSchema.parse(req.body);
+      const { sessionToken, authUser } = await login(db, username, password, {
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+      reply.setCookie(SESSION_COOKIE, sessionToken, cookieOpts);
+      return loginResponseSchema.parse({
+        accessToken: app.signAccessToken(authUser),
+        expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+        user: authUser,
+      });
+    },
+  );
 
   app.post('/api/auth/refresh', async (req) => {
     const token = req.cookies[SESSION_COOKIE];

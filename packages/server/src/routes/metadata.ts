@@ -22,6 +22,7 @@ import {
   targetInputSchema,
   userInputSchema,
   validationRuleInputSchema,
+  webhookInputSchema,
 } from '@dodo/shared';
 import type { Db } from '../db/index.js';
 import {
@@ -37,6 +38,7 @@ import {
   resultsFramework,
   target,
   validationRule,
+  webhook,
 } from '../db/schema.js';
 import { dataElementInputSchema } from '@dodo/shared';
 import { makeCrud, type MetaTable } from '../services/metadata/crud.js';
@@ -164,6 +166,12 @@ export function registerMetadataRoutes(app: FastifyInstance, db: Db) {
     update: dashboards.updateDashboard,
     delete: dashboards.deleteDashboard,
   });
+  crudRoutes(
+    'webhooks',
+    webhookInputSchema,
+    webhookInputSchema.partial(),
+    simple(webhook, 'webhook'),
+  );
   crudRoutes(
     'targets',
     targetInputSchema,

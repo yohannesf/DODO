@@ -352,3 +352,162 @@ describe('submission.complete', () => {
     expect((sub!.row as { status: string }).status).toBe('completed');
   });
 });
+
+describe('m6: approvals, hardening, exports', () => {
+  it('blocks completion when an error-severity rule fails', async () => {
+    // rule: boreholes must be <= 5 (error)
+    await api('POST', '/api/metadata/validation-rules', adminToken, {
+      name: 'Boreholes sanity',
+      code: 'VR-BH-MAX',
+      leftExpr: '#{DE-BH}',
+      op: '<=',
+      rightExpr: '5',
+      severity: 'error',
+    });
+    const ds = await api('POST', '/api/metadata/datasets', adminToken, {
+      name: 'North monthly 2',
+      code: 'DS-NORTH-M2',
+      frequency: 'MONTHLY',
+      requiresApproval: true,
+      approvalLevels: 2,
+      elements: [
+        { dataElementId: deBoreholesId, sortOrder: 0, section: '', required: false },
+      ],
+      orgUnitIds: [northId],
+    });
+
+    // push an offending value for 2026-08
+    const valueOp = {
+      opId: uuidv7(),
+      kind: 'dataValue.upsert',
+      clientTs: new Date().toISOString(),
+      payload: {
+        id: uuidv7(),
+        dataElementId: deBoreholesId,
+        orgUnitId: northId,
+        period: '2026-08',
+        categoryOptionComboId: '019754a0-0000-7000-8000-00000000c0c1',
+        value: '12',
+      },
+    };
+    await api('POST', '/api/sync/push', fieldToken, {
+      deviceId: DEVICE_A,
+      ops: [valueOp],
+    });
+
+    const completeOp = (id: string) => ({
+      opId: uuidv7(),
+      kind: 'submission.complete',
+      clientTs: new Date().toISOString(),
+      payload: {
+        id,
+        datasetId: ds.body.id,
+        orgUnitId: northId,
+        period: '2026-08',
+        note: '',
+      },
+    });
+    const blocked = await api('POST', '/api/sync/push', fieldToken, {
+      deviceId: DEVICE_A,
+      ops: [completeOp(uuidv7())],
+    });
+    expect(blocked.body.results[0].status).toBe('rejected');
+    expect(blocked.body.results[0].error).toMatch(/Boreholes sanity/);
+
+    // fix the value → completion passes → two-level approval chain
+    const fixOp = {
+      ...valueOp,
+      opId: uuidv7(),
+      baseVersion: 1,
+      payload: { ...valueOp.payload, value: '4' },
+    };
+    await api('POST', '/api/sync/push', fieldToken, { deviceId: DEVICE_A, ops: [fixOp] });
+    const subId = uuidv7();
+    const done = await api('POST', '/api/sync/push', fieldToken, {
+      deviceId: DEVICE_A,
+      ops: [completeOp(subId)],
+    });
+    expect(done.body.results[0].status).toBe('applied');
+
+    // approvals: level 1 keeps it completed, level 2 approves
+    const pending = await api('GET', '/api/approvals', adminToken);
+    const mine = pending.body.find(
+      (p: { submissionId: string }) => p.submissionId === subId,
+    );
+    expect(mine.approvalLevels).toBe(2);
+
+    const first = await api('POST', `/api/approvals/${subId}/approve`, adminToken, {
+      comment: 'level 1 ok',
+    });
+    expect(first.body).toMatchObject({ submissionStatus: 'completed', level: 1 });
+
+    const second = await api('POST', `/api/approvals/${subId}/approve`, adminToken, {
+      comment: 'level 2 ok',
+    });
+    expect(second.body).toMatchObject({ submissionStatus: 'approved', level: 2 });
+
+    const hist = await api('GET', `/api/approvals/${subId}/history`, adminToken);
+    expect(hist.body).toHaveLength(2);
+
+    // approved submissions cannot be re-completed
+    const again = await api('POST', '/api/sync/push', fieldToken, {
+      deviceId: DEVICE_A,
+      ops: [completeOp(subId)],
+    });
+    expect(again.body.results[0].status).toBe('rejected');
+  });
+
+  it('round-trips the org unit csv export through the importer', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/export/org-units.csv',
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(res.statusCode).toBe(200);
+    const csv = res.body;
+    expect(csv.split('\n')[0]).toBe(
+      'code,name,short_name,parent_code,opening_date,latitude,longitude',
+    );
+
+    const reimport = await api('POST', '/api/metadata/org-units/import-csv', adminToken, {
+      csv,
+      dryRun: true,
+    });
+    expect(reimport.body.errors).toBe(0);
+    expect(reimport.body.created).toBe(0); // pure update — nothing new
+    expect(reimport.body.updated).toBeGreaterThan(0);
+  });
+
+  it('exports data values as csv and xlsx', async () => {
+    const csv = await app.inject({
+      method: 'GET',
+      url: '/api/export/data-values.csv',
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(csv.statusCode).toBe(200);
+    expect(csv.body).toContain('DE-BH');
+    expect(csv.body).toContain('2026-08');
+
+    const xlsx = await app.inject({
+      method: 'GET',
+      url: '/api/export/data-values.xlsx',
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(xlsx.statusCode).toBe(200);
+    // xlsx = zip container
+    expect(xlsx.rawPayload.subarray(0, 2).toString('latin1')).toBe('PK');
+  });
+
+  it('rate-limits login attempts', async () => {
+    let limited = false;
+    for (let i = 0; i < 12; i++) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { username: 'nobody', password: 'wrong-password' },
+      });
+      if (res.statusCode === 429) limited = true;
+    }
+    expect(limited).toBe(true);
+  });
+});

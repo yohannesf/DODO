@@ -10,6 +10,8 @@ import { registerMetadataRoutes } from './routes/metadata.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerSyncRoutes } from './routes/sync.js';
 import { registerAnalyticsRoutes } from './routes/analytics.js';
+import { registerOpsRoutes } from './routes/ops.js';
+import rateLimit from '@fastify/rate-limit';
 import { authPlugin } from './plugins/auth.js';
 import { AppError } from './lib/errors.js';
 
@@ -43,6 +45,10 @@ export async function buildApp(opts: AppOptions) {
     if (err instanceof AppError) {
       return reply.code(err.statusCode).send({ error: err.message });
     }
+    // framework errors that carry a status (rate limit 429, body too large…)
+    if (typeof err.statusCode === 'number' && err.statusCode < 500) {
+      return reply.code(err.statusCode).send({ error: err.message });
+    }
     // drizzle wraps driver errors; the pg error is on `cause`
     const pg = ((err as Error).cause ?? err) as PgError;
     if (pg.code === '23505') {
@@ -62,6 +68,12 @@ export async function buildApp(opts: AppOptions) {
   });
 
   if (opts.db) {
+    // rate limiting (spec §9): tight on auth, generous elsewhere
+    await app.register(rateLimit, {
+      global: true,
+      max: 600,
+      timeWindow: '1 minute',
+    });
     await app.register(authPlugin, {
       jwtSecret: opts.jwtSecret ?? 'dodo-dev-secret-not-for-production',
     });
@@ -69,6 +81,7 @@ export async function buildApp(opts: AppOptions) {
     registerMetadataRoutes(app, opts.db);
     registerSyncRoutes(app, opts.db);
     registerAnalyticsRoutes(app, opts.db);
+    registerOpsRoutes(app, opts.db);
   }
 
   if (opts.webDistDir && fs.existsSync(opts.webDistDir)) {

@@ -6,6 +6,8 @@ import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import {
   dataValueDeletePayloadSchema,
   dataValueUpsertPayloadSchema,
+  evaluateRules,
+  rulesForDataset,
   submissionCompletePayloadSchema,
   parsePeriod,
   validateValue,
@@ -463,6 +465,53 @@ async function applySubmissionComplete(
       status: 'rejected',
       error: `period must be ${ds.frequency.toLowerCase()}`,
     };
+  }
+
+  // server re-runs validation rules (spec §7.3) — errors block completion
+  const rules = rulesForDataset(
+    await db.select().from(validationRule).where(isNull(validationRule.deletedAt)),
+    payload.datasetId,
+  );
+  if (rules.length > 0) {
+    const values = await db
+      .select({
+        dataElementId: dataValue.dataElementId,
+        categoryOptionComboId: dataValue.categoryOptionComboId,
+        value: dataValue.value,
+      })
+      .from(dataValue)
+      .where(
+        and(
+          eq(dataValue.orgUnitId, payload.orgUnitId),
+          eq(dataValue.period, payload.period),
+        ),
+      );
+    const [des, cocs, opts] = await Promise.all([
+      db
+        .select({ id: dataElement.id, code: dataElement.code })
+        .from(dataElement)
+        .where(isNull(dataElement.deletedAt)),
+      db
+        .select({ id: categoryOptionCombo.id, optionIds: categoryOptionCombo.optionIds })
+        .from(categoryOptionCombo),
+      db
+        .select({ id: categoryOption.id, code: categoryOption.code })
+        .from(categoryOption)
+        .where(isNull(categoryOption.deletedAt)),
+    ]);
+    const failingErrors = evaluateRules(rules, {
+      values,
+      dataElements: des,
+      categoryOptionCombos: cocs,
+      categoryOptions: opts,
+    }).filter((r) => r.ok === false && r.severity === 'error');
+    if (failingErrors.length > 0) {
+      return {
+        opId: op.opId,
+        status: 'rejected',
+        error: `validation errors: ${failingErrors.map((r) => r.name).join('; ')}`,
+      };
+    }
   }
 
   const existing = await db

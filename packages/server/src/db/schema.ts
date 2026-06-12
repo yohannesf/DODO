@@ -259,6 +259,7 @@ export const dataset = pgTable(
     openFuturePeriods: integer('open_future_periods').notNull().default(0),
     expiryDays: integer('expiry_days').notNull().default(0),
     requiresApproval: boolean('requires_approval').notNull().default(false),
+    approvalLevels: integer('approval_levels').notNull().default(1),
     programId: uuid('program_id').references(() => program.id),
     entryLayout: jsonb('entry_layout').notNull().default({}),
   },
@@ -676,3 +677,34 @@ export const dashboardItem = pgTable(
   },
   (t) => [index('dashboard_item_dashboard').on(t.dashboardId)],
 );
+
+// --- M6: approvals + webhooks (spec §4.2, §7.1) -------------------------------
+
+export const approvalStatusEnum = pgEnum('approval_status', ['approved', 'rejected']);
+
+export const approval = pgTable(
+  'approval',
+  {
+    id: uuid('id').primaryKey(),
+    submissionId: uuid('submission_id')
+      .notNull()
+      .references(() => submission.id),
+    level: integer('level').notNull(),
+    actor: uuid('actor').notNull(),
+    status: approvalStatusEnum('status').notNull(),
+    comment: text('comment').notNull().default(''),
+    ts: timestamp('ts', ts).notNull().defaultNow(),
+  },
+  (t) => [index('approval_submission').on(t.submissionId)],
+);
+
+export const webhook = pgTable('webhook', {
+  ...metaColumns,
+  name: text('name').notNull(),
+  url: text('url').notNull(),
+  events: text('events').array().notNull().default([]),
+  secret: text('secret').notNull().default(''),
+  active: boolean('active').notNull().default(true),
+  lastStatus: integer('last_status'),
+  lastFiredAt: timestamp('last_fired_at', ts),
+});

@@ -217,6 +217,7 @@ export const datasetInputSchema = z.object({
   openFuturePeriods: z.number().int().min(0).max(24).default(0),
   expiryDays: z.number().int().min(0).default(0),
   requiresApproval: z.boolean().default(false),
+  approvalLevels: z.number().int().min(1).max(5).default(1),
   programId: z.string().uuid().nullable().default(null),
   entryLayout: z.record(z.unknown()).default({}),
   elements: z.array(datasetElementSchema).default([]),
@@ -374,6 +375,29 @@ export const dashboardInputSchema = z.object({
 });
 export const dashboardSchema = dashboardInputSchema.extend(metaFieldsSchema.shape);
 export type Dashboard = z.infer<typeof dashboardSchema>;
+
+// --- Webhooks (spec §7.1, M6) -------------------------------------------------
+
+export const WEBHOOK_EVENTS = [
+  'submission.completed',
+  'submission.approved',
+  'submission.rejected',
+] as const;
+export const webhookEventSchema = z.enum(WEBHOOK_EVENTS);
+export type WebhookEvent = z.infer<typeof webhookEventSchema>;
+
+export const webhookInputSchema = z.object({
+  name: nameSchema,
+  url: z.string().url().max(2000),
+  events: z.array(webhookEventSchema).default([]),
+  secret: z.string().max(256).default(''),
+  active: z.boolean().default(true),
+});
+export const webhookSchema = webhookInputSchema.extend(metaFieldsSchema.shape).extend({
+  lastStatus: z.number().int().nullable().default(null),
+  lastFiredAt: z.string().nullable().default(null),
+});
+export type Webhook = z.infer<typeof webhookSchema>;
 
 // --- Metadata bundle (spec §8.5): one versioned, shareable JSON ------------
 
