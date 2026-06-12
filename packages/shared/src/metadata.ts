@@ -237,6 +237,7 @@ export const userOrgUnitSchema = z.object({
   orgUnitId: z.string().uuid(),
   scope: orgUnitScopeSchema,
 });
+export type UserOrgUnit = z.infer<typeof userOrgUnitSchema>;
 export const userInputSchema = z.object({
   username: z
     .string()
