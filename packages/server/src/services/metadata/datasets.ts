@@ -20,6 +20,7 @@ interface DatasetInput {
   openFuturePeriods: number;
   expiryDays: number;
   requiresApproval: boolean;
+  approvalLevels: number;
   programId: string | null;
   entryLayout: Record<string, unknown>;
   elements: Array<{
