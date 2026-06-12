@@ -1,0 +1,35 @@
+# private project files (not for the public repo)
+CLAUDE.md
+CLAUDE.local.md
+planning/
+.claude/
+
+# dependencies / builds
+node_modules/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+# environment & secrets
+.env
+.env.*
+!.env.example
+
+# databases / local data
+*.sqlite
+postgres-data/
+pgdata/
+
+# test & coverage output
+coverage/
+playwright-report/
+test-results/
+
+# logs & OS noise
+*.log
+.DS_Store
+
+# editor
+.vscode/
+.idea/
