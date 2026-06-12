@@ -5,6 +5,8 @@ services:
     environment:
       DATABASE_URL: postgres://dodo:${POSTGRES_PASSWORD:-dodo}@db:5432/dodo
       PORT: '3000'
+      JWT_SECRET: ${JWT_SECRET:-dodo-dev-secret-not-for-production}
+      DODO_ADMIN_PASSWORD: ${DODO_ADMIN_PASSWORD:-admin}
     depends_on:
       db:
         condition: service_healthy
