@@ -32,6 +32,9 @@ export default defineConfig({
       workbox: {
         // Precache the entire app shell so the app loads with zero network
         // (spec §5.5). API calls are never cached by the SW — Dexie owns data.
+        // clientsClaim controls the very first install only; updates still
+        // wait for the user's reload (skipWaiting stays false).
+        clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],

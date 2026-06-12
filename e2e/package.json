@@ -1,0 +1,17 @@
+{
+  "name": "@dodo/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "lint": "eslint tests",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.53.0",
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.3"
+  }
+}
