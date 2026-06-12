@@ -9,23 +9,33 @@ import type { FastifyInstance } from 'fastify';
 import type pg from 'pg';
 import { DEFAULT_CATEGORY_COMBO_ID } from '@dodo/shared';
 import { buildApp } from './app.js';
+import { bootstrapAdmin } from './bootstrap.js';
 import { createDb, createPool } from './db/index.js';
 import { runMigrations } from './migrate.js';
 
 let container: StartedPostgreSqlContainer;
 let pool: pg.Pool;
 let app: FastifyInstance;
+let token: string;
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer('postgis/postgis:16-3.5').start();
   const uri = container.getConnectionUri();
   await runMigrations(uri);
   pool = createPool(uri);
+  const db = createDb(pool);
+  await bootstrapAdmin(db, 'admin-test-password');
   app = await buildApp({
-    db: createDb(pool),
+    db,
     health: { dbPing: async () => true, version: 'test' },
     logger: false,
   });
+  const login = await app.inject({
+    method: 'POST',
+    url: '/api/auth/login',
+    payload: { username: 'admin', password: 'admin-test-password' },
+  });
+  token = login.json().accessToken;
 });
 
 afterAll(async () => {
@@ -33,22 +43,108 @@ afterAll(async () => {
   await container?.stop();
 });
 
+const auth = () => ({ authorization: `Bearer ${token}` });
+
 async function post(url: string, body: unknown) {
-  const res = await app.inject({ method: 'POST', url, payload: body as object });
+  const res = await app.inject({
+    method: 'POST',
+    url,
+    payload: body as object,
+    headers: auth(),
+  });
   return { status: res.statusCode, body: res.json() };
 }
 async function patch(url: string, body: unknown) {
-  const res = await app.inject({ method: 'PATCH', url, payload: body as object });
+  const res = await app.inject({
+    method: 'PATCH',
+    url,
+    payload: body as object,
+    headers: auth(),
+  });
   return { status: res.statusCode, body: res.json() };
 }
 async function get(url: string) {
-  const res = await app.inject({ method: 'GET', url });
+  const res = await app.inject({ method: 'GET', url, headers: auth() });
   return { status: res.statusCode, body: res.json() };
 }
 async function del(url: string) {
-  const res = await app.inject({ method: 'DELETE', url });
+  const res = await app.inject({ method: 'DELETE', url, headers: auth() });
   return { status: res.statusCode };
 }
+
+describe('auth', () => {
+  it('rejects bad credentials and missing tokens', async () => {
+    const bad = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { username: 'admin', password: 'wrong' },
+    });
+    expect(bad.statusCode).toBe(401);
+
+    const noToken = await app.inject({ method: 'GET', url: '/api/metadata/programs' });
+    expect(noToken.statusCode).toBe(401);
+  });
+
+  it('issues a session cookie usable for refresh', async () => {
+    const login = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { username: 'admin', password: 'admin-test-password' },
+    });
+    expect(login.statusCode).toBe(200);
+    const cookie = login.cookies.find((c) => c.name === 'dodo_session');
+    expect(cookie?.httpOnly).toBe(true);
+
+    const refresh = await app.inject({
+      method: 'POST',
+      url: '/api/auth/refresh',
+      cookies: { dodo_session: cookie!.value },
+    });
+    expect(refresh.statusCode).toBe(200);
+    expect(refresh.json().user.permissions).toContain('system:admin');
+
+    const me = await app.inject({
+      method: 'GET',
+      url: '/api/auth/me',
+      headers: { authorization: `Bearer ${refresh.json().accessToken}` },
+    });
+    expect(me.statusCode).toBe(200);
+    expect(me.json().username).toBe('admin');
+  });
+
+  it('enforces permissions for non-admin users', async () => {
+    // viewer role: metadata:read but not metadata:write
+    const roles = await get('/api/metadata/roles');
+    const viewer = roles.body.find((r: { code: string }) => r.code === 'VIEWER');
+    await post('/api/metadata/users', {
+      username: 'viewer.user',
+      displayName: 'Viewer',
+      password: 'viewer-password-1',
+      roleIds: [viewer.id],
+    });
+    const login = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { username: 'viewer.user', password: 'viewer-password-1' },
+    });
+    const viewerToken = login.json().accessToken;
+
+    const read = await app.inject({
+      method: 'GET',
+      url: '/api/metadata/programs',
+      headers: { authorization: `Bearer ${viewerToken}` },
+    });
+    expect(read.statusCode).toBe(200);
+
+    const write = await app.inject({
+      method: 'POST',
+      url: '/api/metadata/programs',
+      payload: { name: 'Nope', code: 'NOPE' },
+      headers: { authorization: `Bearer ${viewerToken}` },
+    });
+    expect(write.statusCode).toBe(403);
+  });
+});
 
 describe('programs crud', () => {
   it('creates, versions, soft-deletes', async () => {

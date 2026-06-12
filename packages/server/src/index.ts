@@ -1,5 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import { buildApp } from './app.js';
+import { bootstrapAdmin } from './bootstrap.js';
 import { loadConfig } from './config.js';
 import { createDb, createPool } from './db/index.js';
 import { runMigrations } from './migrate.js';
@@ -24,9 +25,12 @@ async function migrateWithRetry(attempts = 30): Promise<void> {
 await migrateWithRetry();
 
 const pool = createPool(config.DATABASE_URL);
+const db = createDb(pool);
+await bootstrapAdmin(db);
 
 const app = await buildApp({
-  db: createDb(pool),
+  db,
+  jwtSecret: config.JWT_SECRET,
   health: {
     dbPing: async () => {
       try {

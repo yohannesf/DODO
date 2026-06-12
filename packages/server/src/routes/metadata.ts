@@ -47,30 +47,33 @@ interface CrudHandlers {
 }
 
 export function registerMetadataRoutes(app: FastifyInstance, db: Db) {
+  const read = { preHandler: app.requirePermission('metadata:read') };
+  const write = { preHandler: app.requirePermission('metadata:write') };
+
   function crudRoutes(
     prefix: string,
     inputSchema: ZodTypeAny,
     patchSchema: ZodTypeAny,
     svc: CrudHandlers,
   ) {
-    app.get(`/api/metadata/${prefix}`, async () => svc.list(db));
-    app.get(`/api/metadata/${prefix}/:id`, async (req) => {
+    app.get(`/api/metadata/${prefix}`, read, async () => svc.list(db));
+    app.get(`/api/metadata/${prefix}/:id`, read, async (req) => {
       const { id } = idParam.parse(req.params);
       return svc.get(db, id);
     });
-    app.post(`/api/metadata/${prefix}`, async (req, reply) => {
+    app.post(`/api/metadata/${prefix}`, write, async (req, reply) => {
       const input = inputSchema.parse(req.body) as never;
-      const row = await svc.create(db, input);
+      const row = await svc.create(db, input, req.authUser?.id);
       return reply.code(201).send(row);
     });
-    app.patch(`/api/metadata/${prefix}/:id`, async (req) => {
+    app.patch(`/api/metadata/${prefix}/:id`, write, async (req) => {
       const { id } = idParam.parse(req.params);
       const patch = patchSchema.parse(req.body) as never;
-      return svc.update(db, id, patch);
+      return svc.update(db, id, patch, req.authUser?.id);
     });
-    app.delete(`/api/metadata/${prefix}/:id`, async (req, reply) => {
+    app.delete(`/api/metadata/${prefix}/:id`, write, async (req, reply) => {
       const { id } = idParam.parse(req.params);
-      await (svc.softDelete ?? svc.delete)!(db, id);
+      await (svc.softDelete ?? svc.delete)!(db, id, req.authUser?.id);
       return reply.code(204).send();
     });
   }
@@ -175,7 +178,7 @@ export function registerMetadataRoutes(app: FastifyInstance, db: Db) {
     delete: users.deleteUser,
   });
 
-  app.get('/api/metadata/category-combos/:id/option-combos', async (req) => {
+  app.get('/api/metadata/category-combos/:id/option-combos', read, async (req) => {
     const { id } = idParam.parse(req.params);
     return combos.listOptionCombos(db, id);
   });
@@ -184,18 +187,18 @@ export function registerMetadataRoutes(app: FastifyInstance, db: Db) {
     csv: z.string().min(1),
     dryRun: z.boolean().default(true),
   });
-  app.post('/api/metadata/org-units/import-csv', async (req) => {
+  app.post('/api/metadata/org-units/import-csv', write, async (req) => {
     const { csv, dryRun } = csvImportSchema.parse(req.body);
-    return orgUnits.importOrgUnitsCsv(db, csv, dryRun);
+    return orgUnits.importOrgUnitsCsv(db, csv, dryRun, req.authUser?.id);
   });
 
-  app.post('/api/metadata/org-units/import-geojson', async (req) => {
+  app.post('/api/metadata/org-units/import-geojson', write, async (req) => {
     const fc = featureCollectionSchema.parse(req.body);
-    return orgUnits.importOrgUnitGeoJson(db, fc);
+    return orgUnits.importOrgUnitGeoJson(db, fc, req.authUser?.id);
   });
 
-  app.get('/api/metadata/bundle', async () => exportBundle(db));
-  app.post('/api/metadata/bundle', async (req) => {
+  app.get('/api/metadata/bundle', read, async () => exportBundle(db));
+  app.post('/api/metadata/bundle', write, async (req) => {
     const bundle = metadataBundleSchema.parse(req.body);
     return importBundle(db, bundle);
   });

@@ -8,6 +8,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().default('postgres://dodo:dodo@localhost:5433/dodo'),
   // Absolute path to the built SPA; when unset the server is API-only (dev).
   WEB_DIST_DIR: z.string().optional(),
+  // HS256 secret for access tokens; the default is for development only.
+  JWT_SECRET: z.string().min(16).default('dodo-dev-secret-not-for-production'),
 });
 
 export type Config = z.infer<typeof envSchema>;

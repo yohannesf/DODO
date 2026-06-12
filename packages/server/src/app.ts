@@ -7,11 +7,14 @@ import { healthResponseSchema } from '@dodo/shared';
 import type { Db } from './db/index.js';
 import { checkHealth, type HealthDeps } from './services/health.js';
 import { registerMetadataRoutes } from './routes/metadata.js';
+import { registerAuthRoutes } from './routes/auth.js';
+import { authPlugin } from './plugins/auth.js';
 import { AppError } from './lib/errors.js';
 
 export interface AppOptions {
   health: HealthDeps;
   db?: Db;
+  jwtSecret?: string;
   /** Absolute path to the built SPA; when set the server also serves it. */
   webDistDir?: string;
   logger?: boolean;
@@ -57,6 +60,10 @@ export async function buildApp(opts: AppOptions) {
   });
 
   if (opts.db) {
+    await app.register(authPlugin, {
+      jwtSecret: opts.jwtSecret ?? 'dodo-dev-secret-not-for-production',
+    });
+    registerAuthRoutes(app, opts.db);
     registerMetadataRoutes(app, opts.db);
   }
 
