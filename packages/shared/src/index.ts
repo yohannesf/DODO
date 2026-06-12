@@ -6,3 +6,4 @@ export * from './coc.js';
 export * from './auth.js';
 export * from './values.js';
 export * from './sync.js';
+export * from './expr/index.js';
