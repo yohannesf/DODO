@@ -3,8 +3,9 @@
 Open-source (MIT) offline-first indicator data collection and M&E platform.
 
 Field users enter indicator data in their browser; data is stored locally on
-the device and synchronized to the server when connectivity returns. See
-[docs/DODO-SPEC.md](docs/DODO-SPEC.md) for the full specification.
+the device and synchronized to the server when connectivity returns. The
+design language is documented in [docs/design-language.md](docs/design-language.md);
+release notes live in [docs/changelog.md](docs/changelog.md).
 
 ## Repository layout
 
