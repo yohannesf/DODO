@@ -115,8 +115,11 @@ export function ChartWidget({
       color: PALETTE,
       textStyle: { fontFamily: 'IBM Plex Sans' },
       tooltip: { trigger: 'axis' },
-      legend: keys.length > 1 ? { top: 0, icon: 'rect', itemHeight: 8 } : undefined,
-      grid: { left: 40, right: 8, top: keys.length > 1 ? 28 : 12, bottom: 20 },
+      legend:
+        keys.length > 1
+          ? { type: 'scroll', top: 0, left: 0, right: 0, icon: 'rect', itemHeight: 8 }
+          : undefined,
+      grid: { left: 40, right: 8, top: keys.length > 1 ? 32 : 12, bottom: 20 },
       xAxis: { type: 'category', data: periods, axisTick: { show: false } },
       yAxis: { type: 'value', splitLine: { lineStyle: { color: '#E3DFD4' } } },
       series: keys.map((key) => {

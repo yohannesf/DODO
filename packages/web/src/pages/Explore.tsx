@@ -52,8 +52,20 @@ function Chart({
       color: PALETTE,
       textStyle: { fontFamily: 'IBM Plex Sans' },
       tooltip: { trigger: 'axis' },
-      legend: { top: 0, left: 0, icon: 'rect', itemHeight: 8, itemWidth: 8 },
-      grid: { left: 48, right: 12, top: 36, bottom: 24 },
+      // scroll keeps the legend to one row — it must never overlap the plot
+      legend: {
+        type: 'scroll',
+        top: 0,
+        left: 0,
+        right: 0,
+        icon: 'rect',
+        itemHeight: 8,
+        itemWidth: 8,
+        itemGap: 16,
+        // full name stays available in the tooltip
+        formatter: (name: string) => (name.length > 36 ? `${name.slice(0, 35)}…` : name),
+      },
+      grid: { left: 48, right: 12, top: 40, bottom: 24 },
       xAxis: { type: 'category', data: periods, axisTick: { show: false } },
       yAxis: { type: 'value', splitLine: { lineStyle: { color: '#E3DFD4' } } },
       series: seriesKeys.map((key) => {
@@ -214,28 +226,55 @@ export function Explore() {
                     </Tr>
                   </THead>
                   <TBody>
-                    {[...new Set(result.rows.map((r) => `${r.dx}|${r.ou}`))].map(
-                      (key) => {
-                        const [dxId, ouId] = key.split('|');
+                    {(() => {
+                      // group rows by data dimension: print each indicator
+                      // name once (rowspan) instead of repeating per org unit
+                      const buckets = new Map<string, string[]>();
+                      for (const key of new Set(
+                        result.rows.map((r) => `${r.dx}|${r.ou}`),
+                      )) {
+                        const [dxId, ouId] = key.split('|') as [string, string];
+                        buckets.set(dxId, [...(buckets.get(dxId) ?? []), ouId]);
+                      }
+                      const keys = [...buckets.entries()].flatMap(([dxId, ous]) =>
+                        ous.map((ouId) => [dxId, ouId] as [string, string]),
+                      );
+                      const span = new Map(
+                        [...buckets.entries()].map(([dxId, ous]) => [dxId, ous.length]),
+                      );
+                      const seen = new Set<string>();
+                      return keys.map(([dxId, ouId]) => {
+                        const first = !seen.has(dxId);
+                        seen.add(dxId);
                         return (
-                          <Tr key={key} className="hover:bg-surface">
-                            <Td className="font-medium">
-                              {result.meta.names[dxId!] ?? dxId}
-                            </Td>
-                            <Td className="text-ink-muted">
-                              {result.meta.names[ouId!] ?? ouId}
-                            </Td>
-                            {cols.map((pe) => (
-                              <Td key={pe} numeric>
-                                {result.rows.find(
-                                  (r) => r.dx === dxId && r.ou === ouId && r.pe === pe,
-                                )?.value ?? '—'}
+                          <Tr key={`${dxId}|${ouId}`} className="hover:bg-surface">
+                            {first ? (
+                              <Td
+                                rowSpan={span.get(dxId)}
+                                className="border-b border-hairline align-top font-medium"
+                              >
+                                {result.meta.names[dxId] ?? dxId}
                               </Td>
-                            ))}
+                            ) : null}
+                            <Td className="text-ink-muted">
+                              {result.meta.names[ouId] ?? ouId}
+                            </Td>
+                            {cols.map((pe) => {
+                              const v = result.rows.find(
+                                (r) => r.dx === dxId && r.ou === ouId && r.pe === pe,
+                              )?.value;
+                              return (
+                                <Td key={pe} numeric>
+                                  {v === undefined || v === null
+                                    ? '—'
+                                    : Number(v).toLocaleString('en-US')}
+                                </Td>
+                              );
+                            })}
                           </Tr>
                         );
-                      },
-                    )}
+                      });
+                    })()}
                   </TBody>
                 </Table>
               </div>
