@@ -28,7 +28,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm --filter @dodo/web build && pnpm --filter @dodo/web preview',
+    // turbo so @dodo/shared builds first — a bare vite build cannot resolve it
+    command: 'pnpm turbo build --filter=@dodo/web && pnpm --filter @dodo/web preview',
     url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

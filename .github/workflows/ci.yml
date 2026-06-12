@@ -49,5 +49,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @dodo/web build
+      # turbo builds @dodo/shared first; a bare vite build cannot resolve it
+      - run: pnpm turbo build --filter=@dodo/web
       - run: node scripts/lighthouse-pwa.mjs
