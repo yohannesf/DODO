@@ -7,7 +7,10 @@ export default defineConfig({
   workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? 'github' : 'list',
+  // html report feeds the failure artifact upload in ci
+  reporter: process.env.CI
+    ? ([['github'], ['html', { open: 'never' }]] as const)
+    : 'list',
   globalSetup: './global-setup.ts',
   use: {
     trace: 'on-first-retry',

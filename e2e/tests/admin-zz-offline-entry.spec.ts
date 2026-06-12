@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { waitForServiceWorker } from './helpers';
 
 // M2 acceptance — spec §10 offline e2e #1 and #3:
 //  #1 login → initial sync → offline → enter 50 values across 2 datasets →
@@ -136,6 +137,7 @@ test('offline e2e #1: 50 values offline, reload, exactly-once sync', async ({
 }) => {
   await loginUi(page);
   await waitSynced(page); // initial sync done
+  await waitForServiceWorker(page); // offline reload below needs the SW
 
   // M3 acceptance: entry stays responsive on a throttled CPU (spec §12)
   const cdp = await context.newCDPSession(page);

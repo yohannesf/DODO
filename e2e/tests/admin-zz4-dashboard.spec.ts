@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { waitForServiceWorker } from './helpers';
 
 // M5 acceptance — spec §12: a dashboard renders offline with a "data as of"
 // stamp; the map renders offline in the scoped bbox (org unit geometry +
@@ -107,6 +108,7 @@ test('dashboard renders offline with data-as-of stamp', async ({ page, context }
   });
 
   // offline cold reload → mirror + widget cache render with the stamp
+  await waitForServiceWorker(page);
   await context.setOffline(true);
   await page.goto('/dashboards');
   const offlineGrid = page.getByTestId('dashboard-grid');
@@ -135,6 +137,7 @@ test('map renders offline in the scoped bbox', async ({ page, context }) => {
   await expect(page.getByTestId('map-live')).toBeVisible({ timeout: 15_000 });
 
   // offline reload: geometry from Dexie + cached analytics + stamp
+  await waitForServiceWorker(page);
   await context.setOffline(true);
   await page.reload();
   await page
