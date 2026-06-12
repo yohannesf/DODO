@@ -81,6 +81,13 @@ export async function enqueueDataValue(
   const db = getDb();
   await db.transaction('rw', db.dataValues, db.outbox, async () => {
     await db.dataValues.put({ ...payload, version: baseVersion });
+    // coalesce: a newer edit of the same cell supersedes its queued ops
+    const stale = await db.outbox
+      .where('state')
+      .anyOf('pending', 'failed')
+      .filter((op) => (op.payload as { id?: string }).id === payload.id)
+      .primaryKeys();
+    await db.outbox.bulkDelete(stale);
     await db.outbox.put({
       opId: uuidv7(),
       kind: 'dataValue.upsert',
@@ -264,6 +271,9 @@ export async function syncNow(): Promise<void> {
   } catch {
     await refreshCounters();
     useSyncStatus.setState({ status: navigator.onLine ? 'attention' : 'offline' });
+    // transient failures (server hiccup, dropped response) retry shortly;
+    // the op journal makes replays safe (§6.1)
+    if (navigator.onLine) scheduleSync(5000);
   } finally {
     syncing = false;
   }

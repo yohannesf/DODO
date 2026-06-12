@@ -13,7 +13,7 @@ export default defineConfig({
   projects: [
     {
       name: 'offline',
-      testMatch: /offline-.*\.spec\.ts/,
+      testMatch: /tests\/offline-[^/]*\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:4173' },
     },
     {

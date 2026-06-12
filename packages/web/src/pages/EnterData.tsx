@@ -1,7 +1,7 @@
 // Minimal offline-first entry form (ADR 002): reads and writes go to Dexie
 // only; sync replicates in the background. The full keyboard grid (spec
 // §8.3) replaces this in M3.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   DEFAULT_CATEGORY_OPTION_COMBO_ID,
@@ -28,12 +28,15 @@ interface CellProps {
 }
 
 function Cell({ dataElement, cocId, cocName, orgUnitId, period }: CellProps) {
+  // resolves to the row or null — undefined means "still loading", during
+  // which the input stays disabled so a save can never use a stale base
   const existing = useLiveQuery(
     () =>
       getDb()
         .dataValues.where('[dataElementId+orgUnitId+period+categoryOptionComboId]')
         .equals([dataElement.id, orgUnitId, period, cocId])
-        .first(),
+        .first()
+        .then((row) => row ?? null),
     [dataElement.id, orgUnitId, period, cocId],
   );
   const pending = useLiveQuery(async () => {
@@ -44,9 +47,12 @@ function Cell({ dataElement, cocId, cocName, orgUnitId, period }: CellProps) {
 
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const saving = useRef(false);
   const value = draft ?? existing?.value ?? '';
 
   async function save() {
+    // Enter saves; the following blur must not double-enqueue the cell
+    if (saving.current || existing === undefined) return;
     if (draft === null || draft === (existing?.value ?? '')) return;
     if (draft === '') {
       setError(null);
@@ -55,19 +61,24 @@ function Cell({ dataElement, cocId, cocName, orgUnitId, period }: CellProps) {
     const problem = validateValue(dataElement.valueType as ValueType, draft);
     setError(problem);
     if (problem) return;
-    await enqueueDataValue(
-      {
-        id: existing?.id ?? uuidv7(),
-        dataElementId: dataElement.id,
-        orgUnitId,
-        period,
-        categoryOptionComboId: cocId,
-        value: draft,
-        comment: existing?.comment ?? '',
-      },
-      existing?.version,
-    );
-    setDraft(null);
+    saving.current = true;
+    try {
+      await enqueueDataValue(
+        {
+          id: existing?.id ?? uuidv7(),
+          dataElementId: dataElement.id,
+          orgUnitId,
+          period,
+          categoryOptionComboId: cocId,
+          value: draft,
+          comment: existing?.comment ?? '',
+        },
+        existing?.version,
+      );
+      setDraft(null);
+    } finally {
+      saving.current = false;
+    }
   }
 
   return (
@@ -91,6 +102,7 @@ function Cell({ dataElement, cocId, cocName, orgUnitId, period }: CellProps) {
         <Input
           aria-label={`${dataElement.name}${cocName ? ` ${cocName}` : ''}`}
           value={value}
+          disabled={existing === undefined}
           inputMode={dataElement.valueType.startsWith('INTEGER') ? 'numeric' : 'text'}
           className={cx('tnum w-32 text-right', error && 'border-offtrack')}
           onChange={(e) => setDraft(e.target.value)}
@@ -246,7 +258,7 @@ export function EnterData() {
               ) : null}
               {cells.map(({ de, coc }) => (
                 <Cell
-                  key={`${de.id}:${coc?.id ?? 'default'}`}
+                  key={`${de.id}:${coc?.id ?? 'default'}:${orgUnitId}:${period}`}
                   dataElement={de}
                   cocId={coc?.id ?? DEFAULT_CATEGORY_OPTION_COMBO_ID}
                   cocName={coc?.name ?? null}

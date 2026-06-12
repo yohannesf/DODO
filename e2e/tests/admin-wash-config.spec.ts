@@ -5,6 +5,14 @@ import { expect, test, type Page } from '@playwright/test';
 
 test.describe.configure({ mode: 'serial' });
 
+test.beforeEach(async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Username').fill('admin');
+  await page.getByLabel('Password').fill('admin');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page).toHaveURL(/\/enter$/);
+});
+
 async function openConfigure(page: Page, section: string) {
   await page.goto('/configure');
   await page
