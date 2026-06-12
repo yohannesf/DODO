@@ -13,6 +13,7 @@ import {
   DialogClose,
   DialogContent,
   Field,
+  FieldGroup,
   Input,
   Select,
   TBody,
@@ -92,7 +93,7 @@ function UserForm({ user, onDone }: { user: User | null; onDone: () => void }) {
           />
         </Field>
       </div>
-      <Field label="Roles">
+      <FieldGroup label="Roles">
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           {roles.data?.map((r) => (
             <Checkbox
@@ -103,8 +104,8 @@ function UserForm({ user, onDone }: { user: User | null; onDone: () => void }) {
             />
           ))}
         </div>
-      </Field>
-      <Field label="Org unit scope" hint="which subtree(s) this user works in">
+      </FieldGroup>
+      <FieldGroup label="Org unit scope" hint="which subtree(s) this user works in">
         <div className="space-y-1">
           {scopes.map((s, idx) => (
             <div key={idx} className="flex items-center gap-2">
@@ -166,7 +167,7 @@ function UserForm({ user, onDone }: { user: User | null; onDone: () => void }) {
             Add scope
           </Button>
         </div>
-      </Field>
+      </FieldGroup>
       <Checkbox
         label="Disabled"
         checked={form.disabled}
@@ -213,7 +214,7 @@ function RoleForm({ role, onDone }: { role: Role | null; onDone: () => void }) {
           <Input value={code} onChange={(e) => setCode(e.target.value)} />
         </Field>
       </div>
-      <Field label="Permissions">
+      <FieldGroup label="Permissions">
         <div className="grid grid-cols-2 gap-1">
           {PERMISSIONS.map((p) => (
             <Checkbox
@@ -224,7 +225,7 @@ function RoleForm({ role, onDone }: { role: Role | null; onDone: () => void }) {
             />
           ))}
         </div>
-      </Field>
+      </FieldGroup>
       <ErrorNote error={mutation.error} />
       <div className="flex justify-end gap-2 pt-1">
         <DialogClose asChild>

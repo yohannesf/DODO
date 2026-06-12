@@ -73,7 +73,7 @@ export function OptionSetsPage() {
                     className="h-7 text-[13px]"
                   />
                   <Input
-                    placeholder="Code"
+                    placeholder="Option code"
                     value={newOpt.code}
                     onChange={(e) => setNewOpt({ ...newOpt, code: e.target.value })}
                     className="h-7 w-28 text-[13px]"
@@ -118,7 +118,7 @@ export function OptionSetsPage() {
           className="h-7 text-[13px]"
         />
         <Input
-          placeholder="Code"
+          placeholder="Set code"
           value={newSet.code}
           onChange={(e) => setNewSet({ ...newSet, code: e.target.value })}
           className="h-7 w-28 text-[13px]"

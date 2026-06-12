@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { OrgUnit } from '@dodo/shared';
 import {
   Button,
@@ -98,13 +99,18 @@ function CsvImportDialog({ onDone }: { onDone: () => void }) {
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
 
+  const qc = useQueryClient();
+
   async function run(dryRun: boolean) {
     setBusy(true);
     setError(null);
     try {
       const r = await importOrgUnitsCsv(csv, dryRun);
       setReport(r);
-      if (!dryRun && r.errors === 0) onDone();
+      if (!dryRun && r.errors === 0) {
+        await qc.invalidateQueries({ queryKey: ['orgUnits'] });
+        onDone();
+      }
     } catch (e) {
       setError(e);
     } finally {
@@ -186,11 +192,14 @@ function GeoJsonImportDialog({ onDone }: { onDone: () => void }) {
   );
   const [error, setError] = useState<unknown>(null);
 
+  const qc = useQueryClient();
+
   async function run() {
     setError(null);
     try {
       const r = await importOrgUnitsGeoJson(JSON.parse(text));
       setResult(r);
+      await qc.invalidateQueries({ queryKey: ['orgUnits'] });
       if (r.unmatched.length === 0) onDone();
     } catch (e) {
       setError(e);
@@ -232,7 +241,7 @@ function LevelsEditor() {
   return (
     <div className="mt-8 max-w-md">
       <SectionTitle title="Level names" />
-      <ul className="space-y-1">
+      <ul data-testid="level-names" className="space-y-1">
         {levels.data
           ?.slice()
           .sort((a, b) => a.level - b.level)

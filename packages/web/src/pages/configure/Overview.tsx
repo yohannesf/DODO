@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Button, TBody, Table, Td, Th, THead, Tr } from '../../components';
 import {
@@ -46,6 +47,7 @@ export function ConfigureOverview() {
   const [error, setError] = useState<unknown>(null);
   const [report, setReport] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const qc = useQueryClient();
 
   async function onExport() {
     setBusy(true);
@@ -79,6 +81,7 @@ export function ConfigureOverview() {
       setReport(
         `imported — ${sum(result.created)} created, ${sum(result.updated)} updated`,
       );
+      await qc.invalidateQueries();
     } catch (e) {
       setError(e);
     } finally {

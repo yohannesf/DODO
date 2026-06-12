@@ -33,7 +33,7 @@ test('app shell installs and renders offline after first load', async ({
 
   // Client-side navigation keeps working offline across the nav structure.
   await page.getByRole('link', { name: 'Configure' }).click();
-  await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Configuration' })).toBeVisible();
 
   // Back online: status chip recovers.
   await context.setOffline(false);

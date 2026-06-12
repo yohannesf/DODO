@@ -6,6 +6,7 @@ import {
   DialogClose,
   DialogContent,
   Field,
+  FieldGroup,
   Input,
   cx,
 } from '../../components';
@@ -81,7 +82,7 @@ function CategoriesPane({
                     className="h-7 text-[13px]"
                   />
                   <Input
-                    placeholder="Code"
+                    placeholder="Option code"
                     value={newOpt.code}
                     onChange={(e) => setNewOpt({ ...newOpt, code: e.target.value })}
                     className="h-7 w-28 text-[13px]"
@@ -127,7 +128,7 @@ function CategoriesPane({
           className="h-7 text-[13px]"
         />
         <Input
-          placeholder="Code"
+          placeholder="Category code"
           value={newCat.code}
           onChange={(e) => setNewCat({ ...newCat, code: e.target.value })}
           className="h-7 w-28 text-[13px]"
@@ -192,7 +193,7 @@ function ComboBuilder({ onDone }: { onDone: () => void }) {
           <Input value={code} onChange={(e) => setCode(e.target.value)} />
         </Field>
       </div>
-      <Field label="Categories (click in nesting order)">
+      <FieldGroup label="Categories (click in nesting order)">
         <div className="flex flex-wrap gap-2">
           {categories.data?.map((c) => {
             const idx = categoryIds.indexOf(c.id);
@@ -209,7 +210,7 @@ function ComboBuilder({ onDone }: { onDone: () => void }) {
             );
           })}
         </div>
-      </Field>
+      </FieldGroup>
       {preview ? (
         <div data-testid="combo-preview">
           <p className="small-caps mb-1 text-ink-muted">
