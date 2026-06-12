@@ -114,13 +114,17 @@ export function EntryCell({
         data-entry-cell
         inputMode={dataElement.valueType.startsWith('INTEGER') ? 'numeric' : 'text'}
         className={cx(
-          'tnum h-7 w-full min-w-20 border bg-transparent px-1.5 text-right text-sm',
-          'focus:outline-none',
+          // a cell must read as an input before it is touched: visible box,
+          // surface background, hover + focus affordances (research: DHIS2
+          // entry app, DevResults direct entry)
+          'tnum h-8 w-full min-w-24 rounded-xs border text-right text-sm',
+          'py-1 pr-2 pl-5 transition-colors duration-150 ease-out',
+          'focus:ring-1 focus:outline-none',
           typeError || flags.errors.length > 0
-            ? 'border-transparent border-b-offtrack focus:border-offtrack'
+            ? 'border-offtrack bg-offtrack/5 focus:ring-offtrack'
             : flags.warnings.length > 0
-              ? 'border-transparent border-b-ochre focus:border-ochre'
-              : 'border-transparent focus:border-cobalt',
+              ? 'border-ochre bg-ochre/5 focus:ring-ochre'
+              : 'border-hairline bg-surface hover:border-ink-muted focus:border-cobalt focus:ring-cobalt',
         )}
         onChange={(e) => setDraft(e.target.value)}
         onFocus={() => setFocused(true)}
@@ -151,7 +155,7 @@ export function EntryCell({
           });
         }}
       />
-      <span className="pointer-events-none absolute top-1/2 -left-3 -translate-y-1/2 text-[10px]">
+      <span className="pointer-events-none absolute top-1/2 left-1.5 -translate-y-1/2 text-[10px]">
         {conflict ? (
           <button
             type="button"

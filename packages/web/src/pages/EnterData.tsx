@@ -242,6 +242,31 @@ export function EnterData() {
     return map;
   }, [model.values]);
 
+  // Live row total across a numeric element's disaggregation — entered
+  // totals are never asked for (research: DevResults/DHIS2 auto-totals).
+  const rowTotal = useCallback(
+    (deId: string, valueType: string, cocIds: string[]): string | null => {
+      if (
+        !valueType.startsWith('INTEGER') &&
+        valueType !== 'NUMBER' &&
+        valueType !== 'PERCENTAGE'
+      ) {
+        return null;
+      }
+      let sum = 0;
+      let any = false;
+      for (const cocId of cocIds) {
+        const v = valueByCell.get(`${deId}:${cocId}`)?.value;
+        if (v !== undefined && v !== '' && !Number.isNaN(Number(v))) {
+          sum += Number(v);
+          any = true;
+        }
+      }
+      return any ? sum.toLocaleString('en-US') : null;
+    },
+    [valueByCell],
+  );
+
   // --- keyboard model (spec §8.3) ----------------------------------------------
 
   const gridRef = useRef<HTMLDivElement>(null);
@@ -321,7 +346,8 @@ export function EnterData() {
 
   return (
     <Page number="01" title="Enter Data">
-      <div className="grid max-w-4xl grid-cols-3 gap-3">
+      {/* context toolbar — the DHIS2-style "what am I entering" zone */}
+      <div className="grid max-w-4xl grid-cols-3 gap-4 border border-hairline bg-surface p-3">
         <Field label="Dataset">
           <Select
             value={datasetId}
@@ -391,7 +417,7 @@ export function EnterData() {
       </div>
 
       {ready ? (
-        <div className="mt-6 grid max-w-5xl grid-cols-[1fr_190px] gap-8">
+        <div className="mt-6 grid max-w-6xl grid-cols-[1fr_200px] gap-10">
           <div ref={gridRef} data-testid="entry-form" onKeyDown={onGridKeyDown}>
             {sections.map((section) => (
               <section
@@ -409,7 +435,7 @@ export function EnterData() {
                     <thead>
                       {group.cocs.length > 0 ? (
                         <tr>
-                          <th className="w-2/5" />
+                          <th className="w-2/5 border-b border-ink" />
                           {group.cocs.map((coc) => (
                             <th
                               key={coc.id}
@@ -418,11 +444,18 @@ export function EnterData() {
                               {coc.name}
                             </th>
                           ))}
+                          {group.cocs.length > 1 ? (
+                            <th className="small-caps w-24 border-b border-ink px-2 pb-1 text-right font-medium text-ink-muted">
+                              total
+                            </th>
+                          ) : null}
                         </tr>
                       ) : (
                         <tr>
-                          <th className="w-2/5" />
-                          <th className="border-b border-ink" />
+                          <th className="w-2/5 border-b border-ink" />
+                          <th className="small-caps border-b border-ink px-2 pb-1 text-right font-medium text-ink-muted">
+                            value
+                          </th>
                         </tr>
                       )}
                     </thead>
@@ -463,7 +496,7 @@ export function EnterData() {
                                 // reuse state across contexts
                                 <td
                                   key={`${coc.id}:${orgUnitId}:${period}`}
-                                  className="py-0.5 pl-6"
+                                  className="py-1 pl-2"
                                 >
                                   <EntryCell
                                     dataElement={de}
@@ -485,6 +518,15 @@ export function EnterData() {
                                 </td>
                               );
                             })}
+                            {group.cocs.length > 1 ? (
+                              <td className="tnum py-0.5 pr-2 pl-6 text-right text-sm text-ink-muted">
+                                {rowTotal(
+                                  de.id,
+                                  de.valueType,
+                                  group.cocs.map((c) => c.id),
+                                ) ?? '—'}
+                              </td>
+                            ) : null}
                           </tr>
                         );
                       })}

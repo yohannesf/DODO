@@ -48,6 +48,15 @@ Sticky headers and first column, row hover, keyboard navigation,
 right-aligned tabular numbers, zebra OFF, hairline rules. Use the
 `Table/THead/TBody/Tr/Th/Td` primitives; numeric cells take `numeric`.
 
+## Data entry cells are visibly inputs
+
+An editable cell must read as an input _before_ it is touched (pattern:
+DHIS2 entry app, DevResults direct entry): hairline border, `surface`
+background, hover and focus affordances — never invisible-until-focus.
+Validation states color the whole cell (border + faint semantic tint),
+not just an underline. Row totals across a disaggregation are computed
+and displayed automatically; users are never asked to enter a total.
+
 ## Status is typographic, not pill-shaped
 
 Small-caps text with a leading glyph instead of rounded badges:
