@@ -25,6 +25,9 @@ services:
       POSTGRES_USER: dodo
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dodo}
       POSTGRES_DB: dodo
+    ports:
+      # 5433 to stay clear of a host-local postgres on the default port
+      - '127.0.0.1:${POSTGRES_PORT:-5433}:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

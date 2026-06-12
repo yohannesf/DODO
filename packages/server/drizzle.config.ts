@@ -5,6 +5,6 @@ export default defineConfig({
   schema: './src/db/schema.ts',
   out: './drizzle',
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? 'postgres://dodo:dodo@localhost:5432/dodo',
+    url: process.env.DATABASE_URL ?? 'postgres://dodo:dodo@localhost:5433/dodo',
   },
 });
