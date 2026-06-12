@@ -2,6 +2,10 @@
 // are the sync idempotency keys (spec §6.1), so client and server must share
 // this implementation. Uses WebCrypto — works in browsers and Node ≥ 19.
 
+// shared targets browser + node, so neither DOM nor node type libs are
+// loaded; WebCrypto exists as a global in both (node ≥ 19).
+declare const crypto: { getRandomValues(array: Uint8Array): Uint8Array };
+
 const hex: string[] = [];
 for (let i = 0; i < 256; i++) hex.push(i.toString(16).padStart(2, '0'));
 

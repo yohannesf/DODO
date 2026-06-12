@@ -1,5 +1,34 @@
 # Changelog
 
+## M1 — Metadata core (2026-06-12)
+
+Spec §12 M1 acceptance passes: the full WASH demo configuration is creatable
+via the UI only (verified by the `admin-wash-config` e2e suite against a real
+server + PostGIS).
+
+- Metadata schema (spec §4.1) in Drizzle: programs (ADR 001), org unit
+  levels/units (ltree paths, PostGIS geometry), categories/options/combos
+  with materialised category option combos, option sets, data elements,
+  datasets (elements, sections, org-unit assignment), users/roles/scopes.
+  Soft delete + per-write version bumps everywhere; codes mandatory-unique
+  among live rows. Default roles and the reserved `default` combo are seeded.
+- `/api/metadata/*` CRUD for every entity (route → zod → service → Drizzle),
+  plus org-unit CSV import (dry-run report, transactional apply), GeoJSON
+  geometry import matched by code, and metadata bundle export/import
+  (id-stable upsert, COC re-materialisation).
+- COC generation lives in `@dodo/shared` — the disaggregation builder
+  previews exactly what the server materialises. UUIDv7 implementation
+  shared client/server (future sync idempotency keys).
+- Configure UI: overview with bundle export/import, programs, org-unit tree
+  editor with level names + imports, disaggregation builder with live combo
+  preview, data elements, option sets, dataset designer (sections, required
+  flags, subtree org-unit assignment), users & roles.
+- Org-unit subtree reparenting rewrites ltree paths/levels; cycles blocked.
+- Server integration tests run against real Postgres via testcontainers
+  (idempotent bundle round-trip, COC id stability, CSV dry-run rollback…).
+- Passwords hashed with argon2id (@node-rs/argon2). Route-level permission
+  enforcement lands with auth/sync in M2 (ADR 001).
+
 ## M0 — Skeleton (2026-06-11)
 
 Foundation in place; spec §12 M0 acceptance criteria pass.
