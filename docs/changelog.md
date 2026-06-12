@@ -1,5 +1,37 @@
 # Changelog
 
+## M2 — Sync engine (2026-06-12)
+
+Spec §12 M2 acceptance passes: offline e2e #1 (50 values entered offline
+across 2 datasets, reload offline, auto-sync delivers each exactly once) and
+#3 (outbox replay through dropped responses, no duplicates) are green.
+
+- Auth (spec §9): argon2id verification, Lucia-style hashed session tokens in
+  an httpOnly cookie, 15-minute HS256 JWTs carrying permissions + org-unit
+  scope; `/api/auth` login/refresh/logout/me; per-route permission checks on
+  all metadata routes; first-boot `admin` superuser (DODO_ADMIN_PASSWORD).
+- Data tables (spec §4.2): `data_value` (client UUIDv7 ids, unique cell key,
+  versioned), `data_value_audit`, `submission`; `sync_change_log` fed by
+  triggers on every synced table — soft deletes become tombstones.
+- `/api/sync/pull`: cursor over the global change log, ≤1000 changes/page,
+  org-unit-subtree + dataset scoping, tombstones for deletes and out-of-scope
+  rows. `/api/sync/push`: ≤200 ops/batch, one transaction per op, opId
+  journal makes replays return their original result, base-version conflict
+  detection (server value never overwritten), value-type validation with the
+  shared validator, batch hash journaling, device registry powering
+  `/api/sync/status`.
+- Client: per-user Dexie database (spec §5.2) mirroring all synced
+  collections; outbox write path (optimistic local write + queued op, ops
+  coalesce per cell); sync triggers per §5.4 (start, online event, 90 s
+  focus interval, manual, retry after failure); login screen; offline auth
+  cache keeps the app usable without a live token; storage persist request +
+  estimate panel.
+- Sync Center (spec §8.4): outbox with per-item state and human messages,
+  dismissable rejected ops, conflict list with keep-mine/take-server (full
+  side-by-side resolver lands with the M3 grid), device storage panel.
+- Minimal offline entry form (ADR 002) writing through Dexie + outbox; the
+  §8.3 keyboard grid replaces it in M3.
+
 ## M1 — Metadata core (2026-06-12)
 
 Spec §12 M1 acceptance passes: the full WASH demo configuration is creatable
