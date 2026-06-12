@@ -18,10 +18,10 @@ const cookieOpts = {
   maxAge: SESSION_TTL_DAYS * 24 * 3600,
 } as const;
 
-export function registerAuthRoutes(app: FastifyInstance, db: Db) {
+export function registerAuthRoutes(app: FastifyInstance, db: Db, loginRateLimit = 10) {
   app.post(
     '/api/auth/login',
-    { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+    { config: { rateLimit: { max: loginRateLimit, timeWindow: '1 minute' } } },
     async (req, reply) => {
       const { username, password } = loginRequestSchema.parse(req.body);
       const { sessionToken, authUser } = await login(db, username, password, {

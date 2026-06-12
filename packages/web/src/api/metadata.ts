@@ -9,6 +9,7 @@ import {
 import type {
   Category,
   Dashboard,
+  Webhook,
   Indicator,
   ResultsFramework,
   RfNode,
@@ -63,6 +64,7 @@ export const ENTITIES = {
   rfNodes: { table: 'rfNodes', path: '/api/metadata/rf-nodes' },
   targets: { table: 'targets', path: '/api/metadata/targets' },
   dashboards: { table: 'dashboards', path: '/api/metadata/dashboards' },
+  webhooks: { table: 'webhooks', path: '/api/metadata/webhooks' },
   users: { table: 'users', path: '/api/metadata/users' },
 } as const satisfies Record<string, EntityConfig>;
 
@@ -87,6 +89,7 @@ export interface EntityTypes {
   rfNodes: RfNode;
   targets: Target;
   dashboards: Dashboard;
+  webhooks: Webhook;
 }
 
 export function useEntityList<K extends EntityKey>(

@@ -1,5 +1,34 @@
 # Changelog
 
+## M6 — Workflow & ops (2026-06-12)
+
+Spec §12 M6 acceptance passes: the two-level approval chain e2e is green
+(approve and reject paths through the Review & Approve UI), and the org unit
+CSV export round-trips through the importer with zero changes.
+
+- Approvals (spec §3): `approval` table, per-dataset `approval_levels`
+  chain — each level recorded with actor and comment; rejection ends the
+  chain; approvers act within their org-unit scope; approved submissions
+  cannot be re-completed. `/api/approvals` queue + act + history.
+- Review & Approve page: scope-filtered queue with chain progress
+  (◌ level n/m), approve/reject dialogs (reason required to reject),
+  per-submission approval history.
+- Server-side validation hardening (spec §7.3): submission completion
+  re-runs validation rules — failing error-severity rules reject the op
+  with the rule names.
+- Webhooks (spec §7.1): admin-configured endpoints with event selection
+  (submission.completed/approved/rejected), HMAC-SHA256 `x-dodo-signature`,
+  fire-and-forget with last-delivery status; config UI under
+  Configure → Operations.
+- Operations page: device fleet (last seen / last push, lag flags — spec
+  §6.3), data value audit trail, webhook management.
+- Exports: `/api/export/org-units.csv` (exact import columns → round-trips),
+  `/api/export/data-values.csv` and `.xlsx` (SheetJS, dependency-free,
+  Apache-2.0).
+- Rate limiting (spec §9): global per-IP limit + tight login limit, both
+  env-configurable; upstream 4xx statuses (429 etc.) pass through the error
+  handler.
+
 ## M5 — Dashboards & maps (2026-06-12)
 
 Spec §12 M5 acceptance passes: a dashboard renders offline with a

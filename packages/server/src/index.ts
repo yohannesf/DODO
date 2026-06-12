@@ -31,6 +31,8 @@ await bootstrapAdmin(db);
 const app = await buildApp({
   db,
   jwtSecret: config.JWT_SECRET,
+  loginRateLimit: config.LOGIN_RATE_LIMIT,
+  rateLimitMax: config.RATE_LIMIT,
   health: {
     dbPing: async () => {
       try {

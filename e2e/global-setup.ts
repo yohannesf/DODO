@@ -42,6 +42,9 @@ export default async function globalSetup() {
         HOST: '127.0.0.1',
         WEB_DIST_DIR: path.join(repoRoot, 'packages/web/dist'),
         NODE_ENV: 'production',
+        // the suite logs in dozens of times per minute
+        LOGIN_RATE_LIMIT: '1000',
+        RATE_LIMIT: '100000',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     },

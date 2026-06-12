@@ -1,6 +1,6 @@
 // Exports (spec §7.1): CSV and XLSX. The org unit CSV uses exactly the
 // import columns, so export → import round-trips cleanly.
-import { Workbook } from 'exceljs';
+import * as XLSX from 'xlsx';
 import { asc, eq, isNull } from 'drizzle-orm';
 import type { Geometry } from '@dodo/shared';
 import type { Db } from '../db/index.js';
@@ -116,12 +116,9 @@ export async function exportDataValuesCsv(db: Db): Promise<string> {
 
 export async function exportDataValuesXlsx(db: Db): Promise<Buffer> {
   const rows = await dataValueRows(db);
-  const wb = new Workbook();
-  const ws = wb.addWorksheet('data values');
-  ws.addRow(DV_HEADER);
-  ws.getRow(1).font = { bold: true };
-  for (const r of rows) {
-    ws.addRow([
+  const aoa: Array<Array<string | number>> = [
+    DV_HEADER,
+    ...rows.map((r) => [
       r.dataElement,
       r.orgUnit,
       r.period,
@@ -129,10 +126,11 @@ export async function exportDataValuesXlsx(db: Db): Promise<Buffer> {
       Number.isFinite(Number(r.value)) ? Number(r.value) : r.value,
       r.comment,
       r.updatedAt,
-    ]);
-  }
-  ws.columns.forEach((c) => {
-    c.width = 18;
-  });
-  return Buffer.from(await wb.xlsx.writeBuffer());
+    ]),
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = DV_HEADER.map(() => ({ wch: 18 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'data values');
+  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
 }

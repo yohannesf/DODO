@@ -104,6 +104,7 @@ function DatasetEditor({
     openFuturePeriods: dataset?.openFuturePeriods ?? 0,
     expiryDays: dataset?.expiryDays ?? 0,
     requiresApproval: dataset?.requiresApproval ?? false,
+    approvalLevels: dataset?.approvalLevels ?? 1,
     programId: dataset?.programId ?? null,
   });
   const [elements, setElements] = useState<ElementRow[]>(
@@ -191,11 +192,27 @@ function DatasetEditor({
           </Select>
         </Field>
       </div>
-      <Checkbox
-        label="Submissions require approval"
-        checked={form.requiresApproval}
-        onChange={(e) => set('requiresApproval', e.target.checked)}
-      />
+      <div className="flex items-center gap-4">
+        <Checkbox
+          label="Submissions require approval"
+          checked={form.requiresApproval}
+          onChange={(e) => set('requiresApproval', e.target.checked)}
+        />
+        {form.requiresApproval ? (
+          <label className="flex items-center gap-2 text-sm">
+            <span className="small-caps text-ink-muted">levels</span>
+            <Input
+              type="number"
+              min={1}
+              max={5}
+              value={form.approvalLevels}
+              onChange={(e) => set('approvalLevels', Number(e.target.value))}
+              className="w-16"
+              aria-label="Approval levels"
+            />
+          </label>
+        ) : null}
+      </div>
 
       <div>
         <p className="small-caps mb-1 font-medium text-ink-muted">form contents</p>

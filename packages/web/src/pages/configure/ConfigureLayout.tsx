@@ -11,6 +11,7 @@ const SECTIONS = [
   { to: '/configure/datasets', label: 'Datasets' },
   { to: '/configure/validation', label: 'Validation' },
   { to: '/configure/users', label: 'Users & roles' },
+  { to: '/configure/operations', label: 'Operations' },
 ] as const;
 
 export function ConfigureLayout() {

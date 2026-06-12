@@ -19,6 +19,8 @@ export interface AppOptions {
   health: HealthDeps;
   db?: Db;
   jwtSecret?: string;
+  loginRateLimit?: number;
+  rateLimitMax?: number;
   /** Absolute path to the built SPA; when set the server also serves it. */
   webDistDir?: string;
   logger?: boolean;
@@ -46,8 +48,9 @@ export async function buildApp(opts: AppOptions) {
       return reply.code(err.statusCode).send({ error: err.message });
     }
     // framework errors that carry a status (rate limit 429, body too large…)
-    if (typeof err.statusCode === 'number' && err.statusCode < 500) {
-      return reply.code(err.statusCode).send({ error: err.message });
+    const upstreamStatus = (err as { statusCode?: unknown }).statusCode;
+    if (typeof upstreamStatus === 'number' && upstreamStatus < 500) {
+      return reply.code(upstreamStatus).send({ error: (err as Error).message });
     }
     // drizzle wraps driver errors; the pg error is on `cause`
     const pg = ((err as Error).cause ?? err) as PgError;
@@ -71,13 +74,13 @@ export async function buildApp(opts: AppOptions) {
     // rate limiting (spec §9): tight on auth, generous elsewhere
     await app.register(rateLimit, {
       global: true,
-      max: 600,
+      max: opts.rateLimitMax ?? 600,
       timeWindow: '1 minute',
     });
     await app.register(authPlugin, {
       jwtSecret: opts.jwtSecret ?? 'dodo-dev-secret-not-for-production',
     });
-    registerAuthRoutes(app, opts.db);
+    registerAuthRoutes(app, opts.db, opts.loginRateLimit ?? 10);
     registerMetadataRoutes(app, opts.db);
     registerSyncRoutes(app, opts.db);
     registerAnalyticsRoutes(app, opts.db);
