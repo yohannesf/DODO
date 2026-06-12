@@ -217,6 +217,15 @@ describe('push', () => {
     expect(conflict.body.results[0].status).toBe('conflict');
     expect(conflict.body.results[0].conflict.serverValue).toBe('15');
 
+    // replaying a conflicted op surfaces the conflict again — a lost
+    // response must never mask it as a plain duplicate
+    const conflictReplay = await api('POST', '/api/sync/push', fieldToken, {
+      deviceId: DEVICE_B,
+      ops: [stale],
+    });
+    expect(conflictReplay.body.results[0].status).toBe('conflict');
+    expect(conflictReplay.body.results[0].conflict.serverValue).toBe('15');
+
     // server value untouched
     const { rows } = await pool.query('select value from data_value where id = $1', [
       cellId,

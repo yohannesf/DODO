@@ -1,5 +1,32 @@
 # Changelog
 
+## M4 — Indicators & analytics (2026-06-12)
+
+Spec §12 M4 acceptance passes: computed indicator values match
+hand-calculated fixtures (`analytics.int.test.ts`) — flows sum, stocks take
+the latest period (`last`), subtree aggregation, percent indicators with
+option-narrowed numerators, mixed flow/stock formulas.
+
+- Indicators, results frameworks (Goal→Outcome→Output→Activity nodes with
+  linked indicators), and targets/baselines: tables + migrations + change-log
+  triggers, CRUD with expression validation, bundle export/import, sync
+  collections and Dexie mirrors.
+- `/api/analytics?dx=…;ou=…;pe=…&ouMode=subtree&peTotal=1` (spec §4.5):
+  on-the-fly aggregation — across org units by the element's
+  aggregation_op, across periods sum-for-flows / last-for-stocks; indicator
+  formulas computed after operand aggregation (factor + type multiplier,
+  rounded to configured decimals); org-unit scope enforced for non-admins.
+- Indicator builder (spec §8.5): `#{code}` / `#{code.OPTION}` autocomplete,
+  live parse errors, test evaluation of the draft formula against real data
+  for a sample org unit + period.
+- Explore (spec §8.2): dx × ou × pe query builder, pivot table with TOTAL
+  column, ECharts bar/line charts.
+- Framework page: tree editor with kind-aware child creation, indicator
+  linking, inline baseline/target entry per org unit and period.
+- Sync protocol fix: a replayed op now returns its original outcome —
+  a conflict masked behind a lost response is surfaced on retry instead of
+  being reported as a plain duplicate (covered by integration test).
+
 ## M3 — Data entry (2026-06-12)
 
 Spec §12 M3 acceptance passes: offline e2e #2 is green (two clients edit the

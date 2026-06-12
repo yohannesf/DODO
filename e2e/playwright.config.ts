@@ -21,6 +21,9 @@ export default defineConfig({
     {
       name: 'admin',
       testMatch: /admin-.*\.spec\.ts/,
+      // stateful: specs build on one shared database — retrying mid-suite
+      // would re-create fixtures and fail on unique codes
+      retries: 0,
       use: { ...devices['Desktop Chrome'], baseURL: 'http://127.0.0.1:3100' },
     },
   ],

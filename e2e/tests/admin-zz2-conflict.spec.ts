@@ -73,7 +73,7 @@ async function openClient(browser: Browser): Promise<{
   context: BrowserContext;
   page: Page;
 }> {
-  const context = await browser.newContext({ baseURL: BASE });
+  const context = await browser.newContext({ baseURL: BASE, serviceWorkers: 'block' });
   const page = await context.newPage();
   await page.goto('/login');
   await page.getByLabel('Username').fill('conf.field');
@@ -116,9 +116,35 @@ test('offline e2e #2: conflict surfaces and resolves in both directions', async 
   await cell(b.page).press('Enter');
   await expect(cell(b.page)).toHaveValue('200');
 
+  // both queued locally, neither synced — catches offline-emulation leaks
+  await expect(a.page.getByTestId('sync-chip')).toHaveText(/offline — 1 pending/, {
+    timeout: 15_000,
+  });
+  await expect(b.page.getByTestId('sync-chip')).toHaveText(/offline — 1 pending/, {
+    timeout: 15_000,
+  });
+
   // first sync wins
   await a.context.setOffline(false);
   await synced(a.page);
+  await expect
+    .poll(
+      async () => {
+        const pull = await adminApi(
+          request,
+          'get',
+          '/api/sync/pull?cursor=0&collections=dataValues',
+        );
+        return (
+          pull.changes as Array<{ op: string; row?: { period: string; value: string } }>
+        )
+          .filter((c) => c.op === 'upsert')
+          .map((c) => c.row!)
+          .find((r) => r.period === '2026-07')?.value;
+      },
+      { timeout: 20_000 },
+    )
+    .toBe('100');
 
   // second gets the conflict UI — never silent last-write-wins
   await b.context.setOffline(false);
@@ -140,7 +166,27 @@ test('offline e2e #2: conflict surfaces and resolves in both directions', async 
   await cell(b.page).fill('120');
   await cell(b.page).press('Enter');
   await expect(cell(b.page)).toHaveValue('120');
-  await synced(b.page);
+  // the chip can read "synced" before the new op even enqueues — wait until
+  // the server actually holds B's value before A edits from its stale base
+  await expect
+    .poll(
+      async () => {
+        const pull = await adminApi(
+          request,
+          'get',
+          '/api/sync/pull?cursor=0&collections=dataValues',
+        );
+        const row = (
+          pull.changes as Array<{ op: string; row?: { period: string; value: string } }>
+        )
+          .filter((c) => c.op === 'upsert')
+          .map((c) => c.row!)
+          .find((r) => r.period === '2026-07');
+        return row?.value;
+      },
+      { timeout: 20_000 },
+    )
+    .toBe('120');
 
   await a.context.setOffline(true);
   await cell(a.page).fill('110');

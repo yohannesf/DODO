@@ -528,8 +528,13 @@ export async function push(
         const txDb = tx as unknown as Db;
         const seen = await tx.select().from(syncOp).where(eq(syncOp.opId, op.opId));
         if (seen[0]) {
+          // idempotent in OUTCOME: a replayed op returns its original result.
+          // Only originally-applied ops report `duplicate` — a conflict or
+          // rejection must surface again, not be masked (spec §6.1).
           const original = seen[0].result as PushResult;
-          return { ...original, status: 'duplicate' as const };
+          return original.status === 'applied'
+            ? { ...original, status: 'duplicate' as const }
+            : original;
         }
 
         let r: PushResult;

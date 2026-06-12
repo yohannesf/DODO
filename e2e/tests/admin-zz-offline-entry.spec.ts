@@ -173,10 +173,15 @@ test('offline e2e #1: 50 values offline, reload, exactly-once sync', async ({
 });
 
 test('offline e2e #3: replay after dropped responses creates no duplicates', async ({
-  page,
-  context,
+  browser,
   request,
 }) => {
+  // SW-controlled pages bypass Playwright routing — use a SW-free context
+  const context = await browser.newContext({
+    baseURL: 'http://127.0.0.1:3100',
+    serviceWorkers: 'block',
+  });
+  const page = await context.newPage();
   // drop the response of the first two push attempts AFTER the server
   // processed them — the client must replay and the server must dedupe
   let drops = 2;
@@ -205,4 +210,5 @@ test('offline e2e #3: replay after dropped responses creates no duplicates', asy
   expect(new Set(values.map((v) => v.id)).size).toBe(55);
   const june = values.filter((v) => (v as { period?: string }).period === '2026-06');
   expect(june).toHaveLength(5);
+  await context.close();
 });

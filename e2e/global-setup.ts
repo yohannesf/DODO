@@ -2,6 +2,7 @@
 // built SPA) for the admin/server-backed e2e projects. The offline-shell
 // project keeps using the static vite preview web server.
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
+import { createWriteStream } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
@@ -42,9 +43,12 @@ export default async function globalSetup() {
         WEB_DIST_DIR: path.join(repoRoot, 'packages/web/dist'),
         NODE_ENV: 'production',
       },
-      stdio: 'ignore',
+      stdio: ['ignore', 'pipe', 'pipe'],
     },
   );
+  const log = createWriteStream(path.join(repoRoot, 'e2e', 'server.log'));
+  server.stdout?.pipe(log);
+  server.stderr?.pipe(log);
 
   await waitForHealth(`http://127.0.0.1:${SERVER_PORT}/api/health`);
 
