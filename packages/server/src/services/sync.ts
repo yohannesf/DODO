@@ -47,6 +47,7 @@ import { AppError, badRequest } from '../lib/errors.js';
 import { listCategoryCombos } from './metadata/category-combos.js';
 import { listDatasets } from './metadata/datasets.js';
 import { listRfNodes } from './metadata/rf-nodes.js';
+import { listDashboards } from './metadata/dashboards.js';
 import { listOrgUnits } from './metadata/org-units.js';
 
 // --- scoping ----------------------------------------------------------------
@@ -160,6 +161,13 @@ export async function pull(
     keep(
       'orgUnits',
       (await listOrgUnits(db)).filter((o) => ids.has(o.id) && inScope(scope, o.path)),
+    );
+  }
+  if (idsBy('dashboards').length > 0) {
+    const ids = new Set(idsBy('dashboards'));
+    keep(
+      'dashboards',
+      (await listDashboards(db)).filter((d) => ids.has(d.id)),
     );
   }
   if (idsBy('rfNodes').length > 0) {

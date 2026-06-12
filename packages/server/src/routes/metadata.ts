@@ -14,6 +14,7 @@ import {
   orgUnitInputSchema,
   orgUnitLevelInputSchema,
   programInputSchema,
+  dashboardInputSchema,
   indicatorInputSchema,
   resultsFrameworkInputSchema,
   rfNodeInputSchema,
@@ -44,6 +45,7 @@ import * as combos from '../services/metadata/category-combos.js';
 import * as datasets from '../services/metadata/datasets.js';
 import * as users from '../services/metadata/users.js';
 import * as rfNodes from '../services/metadata/rf-nodes.js';
+import * as dashboards from '../services/metadata/dashboards.js';
 import { exportBundle, importBundle } from '../services/metadata/bundle.js';
 
 const idParam = z.object({ id: z.string().uuid() });
@@ -154,6 +156,13 @@ export function registerMetadataRoutes(app: FastifyInstance, db: Db) {
     create: rfNodes.createRfNode,
     update: rfNodes.updateRfNode,
     delete: rfNodes.deleteRfNode,
+  });
+  crudRoutes('dashboards', dashboardInputSchema, dashboardInputSchema.partial(), {
+    list: dashboards.listDashboards,
+    get: dashboards.getDashboard,
+    create: dashboards.createDashboard,
+    update: dashboards.updateDashboard,
+    delete: dashboards.deleteDashboard,
   });
   crudRoutes(
     'targets',

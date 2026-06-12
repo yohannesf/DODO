@@ -22,6 +22,7 @@ export const SYNC_COLLECTIONS = [
   'resultsFrameworks',
   'rfNodes',
   'targets',
+  'dashboards',
 ] as const;
 export type SyncCollection = (typeof SYNC_COLLECTIONS)[number];
 

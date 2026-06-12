@@ -634,3 +634,45 @@ export const target = pgTable(
       .where(sql`deleted_at is null`),
   ],
 );
+
+// --- M5: dashboards (spec §4.1) -----------------------------------------------
+
+export const widgetKindEnum = pgEnum('widget_kind', [
+  'kpi',
+  'chart',
+  'map',
+  'table',
+  'text',
+]);
+
+export const dashboard = pgTable(
+  'dashboard',
+  {
+    ...metaColumns,
+    name: text('name').notNull(),
+    code: text('code').notNull(),
+    shared: boolean('shared').notNull().default(true),
+  },
+  (t) => [
+    uniqueIndex('dashboard_code_live')
+      .on(t.code)
+      .where(sql`deleted_at is null`),
+  ],
+);
+
+export const dashboardItem = pgTable(
+  'dashboard_item',
+  {
+    id: uuid('id').primaryKey(),
+    dashboardId: uuid('dashboard_id')
+      .notNull()
+      .references(() => dashboard.id),
+    kind: widgetKindEnum('kind').notNull(),
+    config: jsonb('config').notNull().default({}),
+    gridX: integer('grid_x').notNull().default(0),
+    gridY: integer('grid_y').notNull().default(0),
+    gridW: integer('grid_w').notNull().default(4),
+    gridH: integer('grid_h').notNull().default(3),
+  },
+  (t) => [index('dashboard_item_dashboard').on(t.dashboardId)],
+);

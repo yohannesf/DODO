@@ -71,6 +71,20 @@
       "when": 1781251021241,
       "tag": "0009_m4-triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1781268508690,
+      "tag": "0010_dashboards",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1781268509390,
+      "tag": "0011_dashboard-trigger",
+      "breakpoints": true
     }
   ]
 }

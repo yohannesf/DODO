@@ -347,6 +347,34 @@ export const rfNodeInputSchema = z.object({
 export const rfNodeSchema = rfNodeInputSchema.extend(metaFieldsSchema.shape);
 export type RfNode = z.infer<typeof rfNodeSchema>;
 
+// --- Dashboards (spec §4.1, §8.6, M5) ----------------------------------------
+
+export const WIDGET_KINDS = ['kpi', 'chart', 'map', 'table', 'text'] as const;
+export const widgetKindSchema = z.enum(WIDGET_KINDS);
+export type WidgetKind = z.infer<typeof widgetKindSchema>;
+
+export const dashboardItemSchema = z.object({
+  id: z.string().uuid(),
+  kind: widgetKindSchema,
+  // widget = saved analytics query + presentation settings; the client
+  // interprets the config, the server stores it verbatim
+  config: z.record(z.unknown()).default({}),
+  gridX: z.number().int().min(0).max(11).default(0),
+  gridY: z.number().int().min(0).default(0),
+  gridW: z.number().int().min(1).max(12).default(4),
+  gridH: z.number().int().min(1).max(12).default(3),
+});
+export type DashboardItem = z.infer<typeof dashboardItemSchema>;
+
+export const dashboardInputSchema = z.object({
+  name: nameSchema,
+  code: codeSchema,
+  shared: z.boolean().default(true),
+  items: z.array(dashboardItemSchema).default([]),
+});
+export const dashboardSchema = dashboardInputSchema.extend(metaFieldsSchema.shape);
+export type Dashboard = z.infer<typeof dashboardSchema>;
+
 // --- Metadata bundle (spec §8.5): one versioned, shareable JSON ------------
 
 export const METADATA_BUNDLE_VERSION = 1;
@@ -369,5 +397,6 @@ export const metadataBundleSchema = z.object({
   resultsFrameworks: z.array(resultsFrameworkSchema).default([]),
   rfNodes: z.array(rfNodeSchema).default([]),
   targets: z.array(targetSchema).default([]),
+  dashboards: z.array(dashboardSchema).default([]),
 });
 export type MetadataBundle = z.infer<typeof metadataBundleSchema>;

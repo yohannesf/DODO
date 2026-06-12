@@ -33,6 +33,7 @@ import {
 } from './category-combos.js';
 import { listDatasets, createDataset, updateDataset } from './datasets.js';
 import { createRfNode, listRfNodes, updateRfNode } from './rf-nodes.js';
+import { createDashboard, listDashboards, updateDashboard } from './dashboards.js';
 
 export async function exportBundle(db: Db): Promise<MetadataBundle> {
   const [
@@ -52,6 +53,7 @@ export async function exportBundle(db: Db): Promise<MetadataBundle> {
     resultsFrameworks,
     rfNodes,
     targets,
+    dashboards,
   ] = await Promise.all([
     db.select().from(program).where(isNull(program.deletedAt)),
     db
@@ -81,6 +83,7 @@ export async function exportBundle(db: Db): Promise<MetadataBundle> {
     db.select().from(resultsFramework).where(isNull(resultsFramework.deletedAt)),
     listRfNodes(db),
     db.select().from(target).where(isNull(target.deletedAt)),
+    listDashboards(db),
   ]);
 
   return metadataBundleSchema.parse({
@@ -103,6 +106,7 @@ export async function exportBundle(db: Db): Promise<MetadataBundle> {
     resultsFrameworks,
     rfNodes,
     targets,
+    dashboards,
   });
 }
 
@@ -306,6 +310,23 @@ export async function importBundle(
       value: r.value,
       kind: r.kind,
     }));
+
+    const existingDashboards = new Set((await listDashboards(tx)).map((d) => d.id));
+    for (const dash of bundle.dashboards) {
+      const input = {
+        name: dash.name,
+        code: dash.code,
+        shared: dash.shared,
+        items: dash.items,
+      };
+      if (existingDashboards.has(dash.id)) {
+        await updateDashboard(tx, dash.id, input);
+        count(updated, 'dashboards');
+      } else {
+        await createDashboard(tx, input, undefined, dash.id);
+        count(created, 'dashboards');
+      }
+    }
 
     const existingDatasets = new Set((await listDatasets(tx)).map((d) => d.id));
     for (const ds of bundle.datasets) {

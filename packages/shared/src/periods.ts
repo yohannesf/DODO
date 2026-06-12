@@ -112,3 +112,122 @@ export function isValidPeriod(input: string): boolean {
 export function periodType(input: string): PeriodType | null {
   return parsePeriod(input)?.type ?? null;
 }
+
+// --- Generation, offsetting, relative periods (M5) ---------------------------
+
+/** The period containing the given date, for a frequency. */
+export function periodContaining(type: PeriodType, date: Date): Period {
+  const y = date.getUTCFullYear();
+  const m = date.getUTCMonth() + 1;
+  switch (type) {
+    case 'YEARLY':
+      return { type, year: y };
+    case 'QUARTERLY':
+      return { type, year: y, quarter: Math.ceil(m / 3) as 1 | 2 | 3 | 4 };
+    case 'MONTHLY':
+      return { type, year: y, month: m };
+    case 'DAILY':
+      return { type, year: y, month: m, day: date.getUTCDate() };
+    case 'WEEKLY': {
+      // ISO week number
+      const d = new Date(Date.UTC(y, date.getUTCMonth(), date.getUTCDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const week = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+      return { type, year: d.getUTCFullYear(), week };
+    }
+  }
+}
+
+/** The period n steps away (negative = into the past). */
+export function offsetPeriod(period: Period, n: number): Period {
+  switch (period.type) {
+    case 'YEARLY':
+      return { ...period, year: period.year + n };
+    case 'QUARTERLY': {
+      const index = period.year * 4 + (period.quarter - 1) + n;
+      return {
+        type: 'QUARTERLY',
+        year: Math.floor(index / 4),
+        quarter: ((((index % 4) + 4) % 4) + 1) as 1 | 2 | 3 | 4,
+      };
+    }
+    case 'MONTHLY': {
+      const index = period.year * 12 + (period.month - 1) + n;
+      return {
+        type: 'MONTHLY',
+        year: Math.floor(index / 12),
+        month: (((index % 12) + 12) % 12) + 1,
+      };
+    }
+    case 'DAILY': {
+      const d = new Date(Date.UTC(period.year, period.month - 1, period.day));
+      d.setUTCDate(d.getUTCDate() + n);
+      return {
+        type: 'DAILY',
+        year: d.getUTCFullYear(),
+        month: d.getUTCMonth() + 1,
+        day: d.getUTCDate(),
+      };
+    }
+    case 'WEEKLY': {
+      // walk via a date in the middle of the ISO week
+      const jan4 = new Date(Date.UTC(period.year, 0, 4));
+      const week1Monday = new Date(jan4);
+      week1Monday.setUTCDate(jan4.getUTCDate() - ((jan4.getUTCDay() || 7) - 1));
+      const monday = new Date(week1Monday);
+      monday.setUTCDate(week1Monday.getUTCDate() + (period.week - 1 + n) * 7);
+      return periodContaining('WEEKLY', monday);
+    }
+  }
+}
+
+export const RELATIVE_PERIODS = [
+  'THIS_MONTH',
+  'LAST_MONTH',
+  'LAST_3_MONTHS',
+  'LAST_6_MONTHS',
+  'LAST_12_MONTHS',
+  'THIS_QUARTER',
+  'LAST_4_QUARTERS',
+  'THIS_YEAR',
+  'LAST_YEAR',
+] as const;
+export type RelativePeriod = (typeof RELATIVE_PERIODS)[number];
+
+/** Resolve a relative period token to concrete period strings. */
+export function resolveRelativePeriods(
+  token: RelativePeriod,
+  now: Date = new Date(),
+): string[] {
+  const span = (type: PeriodType, count: number, includeCurrent: boolean) => {
+    const current = periodContaining(type, now);
+    const start = includeCurrent ? 0 : 1;
+    const out: string[] = [];
+    for (let i = count - 1 + start; i >= start; i--) {
+      out.push(formatPeriod(offsetPeriod(current, -i)));
+    }
+    return out;
+  };
+  switch (token) {
+    case 'THIS_MONTH':
+      return span('MONTHLY', 1, true);
+    case 'LAST_MONTH':
+      return span('MONTHLY', 1, false);
+    case 'LAST_3_MONTHS':
+      return span('MONTHLY', 3, false);
+    case 'LAST_6_MONTHS':
+      return span('MONTHLY', 6, false);
+    case 'LAST_12_MONTHS':
+      return span('MONTHLY', 12, false);
+    case 'THIS_QUARTER':
+      return span('QUARTERLY', 1, true);
+    case 'LAST_4_QUARTERS':
+      return span('QUARTERLY', 4, false);
+    case 'THIS_YEAR':
+      return span('YEARLY', 1, true);
+    case 'LAST_YEAR':
+      return span('YEARLY', 1, false);
+  }
+}

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { formatPeriod, isValidPeriod, parsePeriod, periodType } from './periods.js';
+import {
+  formatPeriod,
+  isValidPeriod,
+  offsetPeriod,
+  parsePeriod,
+  periodContaining,
+  periodType,
+  resolveRelativePeriods,
+} from './periods.js';
 
 describe('parsePeriod', () => {
   it('parses yearly periods', () => {
@@ -91,5 +99,48 @@ describe('helpers', () => {
   it('periodType reports the type', () => {
     expect(periodType('2026-W14')).toBe('WEEKLY');
     expect(periodType('nope')).toBeNull();
+  });
+});
+
+describe('offsetPeriod / periodContaining / relative periods', () => {
+  const now = new Date('2026-06-12T10:00:00Z');
+
+  it('offsets months across year boundaries', () => {
+    expect(formatPeriod(offsetPeriod(parsePeriod('2026-01')!, -1))).toBe('2025-12');
+    expect(formatPeriod(offsetPeriod(parsePeriod('2026-11')!, 3))).toBe('2027-02');
+  });
+
+  it('offsets quarters and years', () => {
+    expect(formatPeriod(offsetPeriod(parsePeriod('2026-Q1')!, -2))).toBe('2025-Q3');
+    expect(formatPeriod(offsetPeriod(parsePeriod('2026')!, 1))).toBe('2027');
+  });
+
+  it('offsets days and weeks', () => {
+    expect(formatPeriod(offsetPeriod(parsePeriod('2026-03-01')!, -1))).toBe('2026-02-28');
+    expect(formatPeriod(offsetPeriod(parsePeriod('2026-W01')!, -1))).toBe('2025-W52');
+  });
+
+  it('finds containing periods', () => {
+    expect(formatPeriod(periodContaining('MONTHLY', now))).toBe('2026-06');
+    expect(formatPeriod(periodContaining('QUARTERLY', now))).toBe('2026-Q2');
+    expect(formatPeriod(periodContaining('WEEKLY', now))).toBe('2026-W24');
+  });
+
+  it('resolves relative tokens', () => {
+    expect(resolveRelativePeriods('THIS_MONTH', now)).toEqual(['2026-06']);
+    expect(resolveRelativePeriods('LAST_3_MONTHS', now)).toEqual([
+      '2026-03',
+      '2026-04',
+      '2026-05',
+    ]);
+    expect(resolveRelativePeriods('LAST_12_MONTHS', now)).toHaveLength(12);
+    expect(resolveRelativePeriods('LAST_12_MONTHS', now)[0]).toBe('2025-06');
+    expect(resolveRelativePeriods('THIS_QUARTER', now)).toEqual(['2026-Q2']);
+    expect(resolveRelativePeriods('LAST_4_QUARTERS', now)).toEqual([
+      '2025-Q2',
+      '2025-Q3',
+      '2025-Q4',
+      '2026-Q1',
+    ]);
   });
 });
