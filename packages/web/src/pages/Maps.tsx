@@ -133,6 +133,10 @@ export function Maps() {
             <p className="small-caps mb-1 text-ink-muted" data-testid="map-stamp">
               ◌ data as of {new Date(widget.asOf).toLocaleString()}
             </p>
+          ) : widget.result ? (
+            <p className="small-caps mb-1 text-ink-muted" data-testid="map-live">
+              ● live data
+            </p>
           ) : null}
           <MapView data={data} />
         </div>

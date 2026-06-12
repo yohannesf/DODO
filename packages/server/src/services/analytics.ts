@@ -247,16 +247,17 @@ export async function runAnalytics(
   for (const i of indicators) names[i.id] = i.name;
   for (const o of ouRows) names[o.id] = o.name;
 
-  const periodCells = query.peTotal
-    ? [...query.pe.map((p) => [p] as string[]), query.pe]
-    : query.pe.map((p) => [p]);
-  const peLabel = (periods: string[]) => (periods.length === 1 ? periods[0]! : 'TOTAL');
+  const periodCells: Array<{ periods: string[]; label: string }> = query.pe.map((p) => ({
+    periods: [p],
+    label: p,
+  }));
+  if (query.peTotal) periodCells.push({ periods: query.pe, label: 'TOTAL' });
 
   const rows: AnalyticsRow[] = [];
   for (const dxId of query.dx) {
     for (const root of ouRows) {
       const members = groupMembers.get(root.id)!;
-      for (const periods of periodCells) {
+      for (const { periods, label } of periodCells) {
         let value: number | null;
         const ind = indicators.find((i) => i.id === dxId);
         if (!ind) {
@@ -280,7 +281,7 @@ export async function runAnalytics(
             value = Math.round(raw * f) / f;
           }
         }
-        rows.push({ dx: dxId, ou: root.id, pe: peLabel(periods), value });
+        rows.push({ dx: dxId, ou: root.id, pe: label, value });
       }
     }
   }

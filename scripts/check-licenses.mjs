@@ -20,6 +20,13 @@ const ALLOWED = new Set([
 const EXCEPTIONS = new Set(['Unlicense', 'BlueOak-1.0.0']);
 for (const e of EXCEPTIONS) ALLOWED.add(e);
 
+// Packages whose manifest omits the license field but whose licensing is
+// verified upstream:
+//   @mapbox/jsonlint-lines-primitives — fork of zaach/jsonlint (MIT); the
+//   fork ships no license field, the upstream LICENSE applies. Pulled in by
+//   maplibre-gl (BSD-3-Clause).
+const KNOWN_PACKAGES = new Set(['@mapbox/jsonlint-lines-primitives']);
+
 function licenseAllowed(expr) {
   if (ALLOWED.has(expr)) return true;
   // SPDX expressions: "(A OR B)" passes if any branch passes,
@@ -40,6 +47,7 @@ const violations = [];
 for (const [license, packages] of Object.entries(byLicense)) {
   if (licenseAllowed(license)) continue;
   for (const pkg of packages) {
+    if (KNOWN_PACKAGES.has(pkg.name)) continue;
     violations.push(`${pkg.name}@${pkg.versions.join(',')}: ${license}`);
   }
 }

@@ -1,5 +1,33 @@
 # Changelog
 
+## M5 — Dashboards & maps (2026-06-12)
+
+Spec §12 M5 acceptance passes: a dashboard renders offline with a
+“data as of” stamp, and the map renders offline in the scoped bbox
+(`admin-zz4-dashboard` e2e).
+
+- Period logic completed in `@dodo/shared`: `periodContaining`,
+  `offsetPeriod`, and relative-period resolution (this/last month, last
+  3/6/12 months, quarters, years) — used by every widget query.
+- Dashboards (spec §8.6): dashboard + dashboard_item tables, CRUD, sync
+  collection + Dexie mirror, bundle export/import; 12-column grid with
+  pointer drag-to-move and resize; five widgets — KPI (value vs target with
+  achievement colour + text sparkline), bar/line chart (ECharts), pivot
+  table, rich text, map; global org-unit/period filters cascade into
+  widgets.
+- Offline dashboards: every widget query’s last result is cached in Dexie;
+  offline (or when the server is unreachable) widgets render the cached data
+  with a “data as of <ts>” stamp.
+- Maps (spec §8.7): MapLibre GL with org-unit boundaries and points straight
+  from the local Dexie geometry (fully offline data layers), choropleth /
+  graduated points coloured by achievement vs target thresholds
+  (≥100% green, 70–99% ochre, <70% red, cobalt without a target), hover
+  values, scoped-bbox auto-fit, legend; optional self-hosted PMTiles
+  basemap with a download-once offline cache and ODbL attribution
+  (ADR 001). Heavy map/chart code is split into separate precached chunks.
+- Analytics: the aggregate row is now always labelled TOTAL when requested,
+  also for single-period queries.
+
 ## M4 — Indicators & analytics (2026-06-12)
 
 Spec §12 M4 acceptance passes: computed indicator values match
