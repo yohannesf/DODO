@@ -224,14 +224,15 @@ export function EnterData() {
     return byDe;
   }, [failing, model.dataElements, model.rules]);
 
-  const conflictsByValueId = useMemo(() => {
+  const conflictsByCell = useMemo(() => {
     const map = new Map<string, ConflictRow>();
     for (const c of model.conflicts ?? []) {
       const payload = c.localPayload as LocalDataValue;
-      map.set(payload.id, c);
+      if (payload.orgUnitId !== orgUnitId || payload.period !== period) continue;
+      map.set(`${payload.dataElementId}:${payload.categoryOptionComboId}`, c);
     }
     return map;
-  }, [model.conflicts]);
+  }, [model.conflicts, orgUnitId, period]);
 
   const valueByCell = useMemo(() => {
     const map = new Map<string, LocalDataValue>();
@@ -456,9 +457,14 @@ export function EnterData() {
                               ) : null}
                             </td>
                             {cocsForRow.map((coc, ci) => {
-                              const existing = valueByCell.get(`${de.id}:${coc.id}`);
                               return (
-                                <td key={coc.id} className="py-0.5 pl-6">
+                                // key includes the cell coordinates: switching
+                                // period/org unit must remount cells, never
+                                // reuse state across contexts
+                                <td
+                                  key={`${coc.id}:${orgUnitId}:${period}`}
+                                  className="py-0.5 pl-6"
+                                >
                                   <EntryCell
                                     dataElement={de}
                                     cocId={coc.id}
@@ -469,9 +475,7 @@ export function EnterData() {
                                     col={ci}
                                     flags={flags}
                                     conflict={
-                                      existing
-                                        ? (conflictsByValueId.get(existing.id) ?? null)
-                                        : null
+                                      conflictsByCell.get(`${de.id}:${coc.id}`) ?? null
                                     }
                                     onConflictClick={(conflict, label) =>
                                       setConflictTarget({ conflict, label })

@@ -338,6 +338,7 @@ async function applyDataValueUpsert(
       opId: op.opId,
       status: 'conflict',
       conflict: {
+        serverId: current.id,
         serverValue: current.value,
         serverActor: current.storedBy,
         serverTs: current.updatedAt,
@@ -385,6 +386,7 @@ async function applyDataValueDelete(
       opId: op.opId,
       status: 'conflict',
       conflict: {
+        serverId: current.id,
         serverValue: current.value,
         serverActor: current.storedBy,
         serverTs: current.updatedAt,

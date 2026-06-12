@@ -166,6 +166,12 @@ async function pushOnce(): Promise<boolean> {
           resolvedAt: null,
         });
         await db.outbox.delete(op.opId);
+        // the server's row for this cell has a different id and arrives via
+        // pull — drop the loser's local row so each cell has exactly one row
+        const localId = (op.payload as { id?: string }).id;
+        if (localId && localId !== result.conflict!.serverId) {
+          await db.dataValues.delete(localId);
+        }
         break;
       }
       case 'rejected': {
@@ -338,7 +344,10 @@ export async function enqueueSubmissionComplete(
 
 export async function resolveConflictKeepMine(conflict: ConflictRow): Promise<void> {
   const local = conflict.localPayload as DataValueUpsertPayload;
-  await enqueueDataValue(local, conflict.conflict.serverVersion);
+  await enqueueDataValue(
+    { ...local, id: conflict.conflict.serverId },
+    conflict.conflict.serverVersion,
+  );
   await getDb().conflicts.update(conflict.opId, {
     resolvedAt: new Date().toISOString(),
   });
@@ -347,11 +356,9 @@ export async function resolveConflictKeepMine(conflict: ConflictRow): Promise<vo
 
 export async function resolveConflictTakeServer(conflict: ConflictRow): Promise<void> {
   const db = getDb();
-  const local = conflict.localPayload as DataValueUpsertPayload;
-  const row = await db.dataValues.get(local.id);
-  if (conflict.conflict.serverValue === null) {
-    if (row) await db.dataValues.delete(local.id);
-  } else if (row) {
+  // the server row already replaced the local one via pull — just accept it
+  const row = await db.dataValues.get(conflict.conflict.serverId);
+  if (row && conflict.conflict.serverValue !== null) {
     await db.dataValues.put({
       ...row,
       value: conflict.conflict.serverValue,

@@ -137,6 +137,10 @@ test('offline e2e #1: 50 values offline, reload, exactly-once sync', async ({
   await loginUi(page);
   await waitSynced(page); // initial sync done
 
+  // M3 acceptance: entry stays responsive on a throttled CPU (spec §12)
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+
   await context.setOffline(true);
 
   // 50 values: 2 datasets × 5 elements × 5 periods — entered fully offline
@@ -147,6 +151,7 @@ test('offline e2e #1: 50 values offline, reload, exactly-once sync', async ({
     }
   }
   await expect(page.getByTestId('sync-chip')).toHaveText(/offline — 50 pending/);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
 
   // cold reload while still offline — everything must come back from Dexie
   await page.reload();

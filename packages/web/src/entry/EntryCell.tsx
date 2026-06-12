@@ -135,6 +135,8 @@ export function EntryCell({
             setTypeError(null);
             e.stopPropagation();
           }
+          // Enter saves immediately; the grid handler then advances focus
+          if (e.key === 'Enter') void save();
         }}
         onContextMenu={(e) => {
           e.preventDefault();
@@ -154,6 +156,7 @@ export function EntryCell({
           <button
             type="button"
             className="pointer-events-auto cursor-pointer text-offtrack"
+            aria-label="conflict — click to resolve"
             title="conflict — click to resolve"
             onClick={() => onConflictClick(conflict, label)}
           >

@@ -1,5 +1,35 @@
 # Changelog
 
+## M3 — Data entry (2026-06-12)
+
+Spec §12 M3 acceptance passes: offline e2e #2 is green (two clients edit the
+same cell offline; the first sync wins, the second resolves the conflict in
+both directions), and the 50-value offline entry runs jank-free under 4×
+CPU throttling.
+
+- Expression engine (spec §4.6) in `@dodo/shared/expr`: recursive-descent
+  parser + evaluator (arithmetic, `#{code}` / `#{code.OPTION_CODE}` refs,
+  if/isNull/min/max/abs/round), no eval, property-based tests (fast-check).
+  Pulled forward from M4 because validation rules need it.
+- Validation rules end to end: metadata entity (+ migration, change-log
+  trigger, bundle, sync collection, Dexie mirror), Configure builder with
+  live parse errors, and a shared rule evaluator: `#{DE}` sums across
+  combos, `#{DE.OPTION_CODE}` narrows by category option. Rules run during
+  entry (offline) with the exact same code the server will use.
+- Entry grid (spec §8.3): one row per data element with COC columns,
+  full keyboard model (Tab/Enter advance, arrows move, Esc reverts,
+  Ctrl+S opens completion), cell states (● saved-local, ochre/red
+  underlines for warnings/errors, ▲ conflict, ◦ comment), right-click
+  cell comments, completeness rail.
+- Mark complete: runs all rules, summary dialog (filled/required,
+  errors block, overridden warnings require a note), `submission.complete`
+  push op with server-side period/assignment validation; submissions
+  replicate to all scoped devices.
+- Conflict resolver (spec §8.4): side-by-side mine vs server with actor and
+  time — keep mine / take server / edit, re-pushed against the server's
+  row id and version (conflicts now report `serverId`; the losing local row
+  is dropped so every cell keeps exactly one row).
+
 ## M2 — Sync engine (2026-06-12)
 
 Spec §12 M2 acceptance passes: offline e2e #1 (50 values entered offline

@@ -77,6 +77,8 @@ export const pushResultSchema = z.object({
   serverVersion: z.number().int().optional(),
   conflict: z
     .object({
+      /** the server's row id for this cell — resolutions target it */
+      serverId: z.string().uuid(),
       serverValue: z.string().nullable(),
       serverActor: z.string().nullable(),
       serverTs: z.string().nullable(),
