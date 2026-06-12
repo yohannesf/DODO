@@ -2,6 +2,7 @@
 // Status is typographic — small-caps with a leading glyph.
 import { Link } from '@tanstack/react-router';
 import { useSyncExternalStore } from 'react';
+import { t } from '../i18n';
 import { useSyncStatus } from '../sync/engine';
 
 function subscribeOnline(onChange: () => void) {
@@ -23,17 +24,17 @@ export function SyncChip() {
 
   let text: string;
   if (!online) {
-    text = pending > 0 ? `◌ offline — ${pending} pending` : '◌ offline';
+    text = pending > 0 ? t('sync.offlinePending', { n: pending }) : t('sync.offline');
   } else if (status === 'syncing') {
-    text = '◌ syncing…';
+    text = t('sync.syncing');
   } else if (conflicts > 0) {
     text = `▲ ${conflicts} conflict${conflicts > 1 ? 's' : ''}`;
   } else if (failed > 0) {
-    text = `▲ ${failed} failed`;
+    text = t('sync.failed', { n: failed });
   } else if (pending > 0) {
-    text = `◌ ${pending} pending`;
+    text = t('sync.pending', { n: pending });
   } else {
-    text = '● synced';
+    text = t('sync.synced');
   }
 
   return (

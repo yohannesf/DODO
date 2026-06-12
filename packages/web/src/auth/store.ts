@@ -4,6 +4,7 @@
 import { create } from 'zustand';
 import type { AuthUser, LoginResponse } from '@dodo/shared';
 import { openDb } from '../db/db';
+import { setLocale } from '../i18n';
 import { setTokenProvider } from '../api/client';
 
 let accessToken: string | null = null;
@@ -30,6 +31,7 @@ async function applyLogin(res: LoginResponse, offlineSession: boolean) {
     cachedAt: new Date().toISOString(),
   });
   scheduleRefresh(res.expiresIn);
+  setLocale(res.user.locale);
   useAuth.setState({ status: 'authed', user: res.user, offlineSession });
 }
 
@@ -87,6 +89,7 @@ export const useAuth = create<AuthState>((set) => ({
       const db = openDb(lastUserId);
       const cached = await db.authCache.get('auth');
       if (cached) {
+        setLocale(cached.user.locale);
         set({ status: 'authed', user: cached.user, offlineSession: true });
         return;
       }

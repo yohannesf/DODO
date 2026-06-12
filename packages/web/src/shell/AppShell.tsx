@@ -1,16 +1,17 @@
 import { Link, Outlet, useNavigate } from '@tanstack/react-router';
 import { useAuth } from '../auth/store';
+import { t } from '../i18n';
 import { SyncChip } from './SyncChip';
 
 // Information architecture per spec §8.2.
 const NAV = [
-  { to: '/enter', label: 'Enter Data' },
-  { to: '/review', label: 'Review & Approve' },
-  { to: '/dashboards', label: 'Dashboards' },
-  { to: '/maps', label: 'Maps' },
-  { to: '/explore', label: 'Explore' },
-  { to: '/framework', label: 'Framework' },
-  { to: '/configure', label: 'Configure' },
+  { to: '/enter', key: 'nav.enterData' },
+  { to: '/review', key: 'nav.review' },
+  { to: '/dashboards', key: 'nav.dashboards' },
+  { to: '/maps', key: 'nav.maps' },
+  { to: '/explore', key: 'nav.explore' },
+  { to: '/framework', key: 'nav.framework' },
+  { to: '/configure', key: 'nav.configure' },
 ] as const;
 
 export function AppShell() {
@@ -24,7 +25,7 @@ export function AppShell() {
         <div className="flex items-baseline gap-3">
           <span className="font-mono text-base font-medium tracking-tight">DODO</span>
           <span className="small-caps hidden text-ink-muted sm:inline">
-            data online, data offline
+            {t('app.tagline')}
           </span>
         </div>
         <div className="flex items-baseline gap-4">
@@ -37,7 +38,7 @@ export function AppShell() {
               void logout().then(() => navigate({ to: '/login' }));
             }}
           >
-            sign out
+            {t('nav.signOut')}
           </button>
         </div>
       </header>
@@ -54,7 +55,7 @@ export function AppShell() {
                       'block border-l-2 border-cobalt px-4 py-1.5 text-sm font-medium text-cobalt',
                   }}
                 >
-                  {item.label}
+                  {t(item.key)}
                 </Link>
               </li>
             ))}

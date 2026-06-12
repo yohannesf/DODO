@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { Button, Field, Input } from '../components';
 import { useAuth } from '../auth/store';
+import { t } from '../i18n';
 import { startSyncLoop } from '../sync/engine';
 
 export function LoginPage() {
@@ -21,7 +22,7 @@ export function LoginPage() {
       startSyncLoop();
       await navigate({ to: '/enter' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'login failed');
+      setError(err instanceof Error ? err.message : t('login.failed'));
     } finally {
       setBusy(false);
     }
@@ -31,9 +32,9 @@ export function LoginPage() {
     <main className="grid min-h-dvh place-items-center bg-paper">
       <form onSubmit={submit} className="w-80 border border-ink bg-surface p-6">
         <p className="font-mono text-lg font-medium tracking-tight">DODO</p>
-        <p className="small-caps mt-0.5 mb-5 text-ink-muted">data online, data offline</p>
+        <p className="small-caps mt-0.5 mb-5 text-ink-muted">{t('app.tagline')}</p>
         <div className="space-y-3">
-          <Field label="Username">
+          <Field label={t('login.username')}>
             <Input
               autoFocus
               autoComplete="username"
@@ -42,7 +43,7 @@ export function LoginPage() {
               className="w-full"
             />
           </Field>
-          <Field label="Password">
+          <Field label={t('login.password')}>
             <Input
               type="password"
               autoComplete="current-password"
@@ -63,7 +64,7 @@ export function LoginPage() {
           className="mt-5 w-full justify-center"
           disabled={busy || !username || !password}
         >
-          Sign in
+          {t('login.signIn')}
         </Button>
       </form>
     </main>
