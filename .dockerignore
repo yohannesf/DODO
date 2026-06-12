@@ -1,0 +1,14 @@
+.git
+node_modules
+**/node_modules
+**/dist
+**/.turbo
+e2e
+docs
+coverage
+playwright-report
+test-results
+.env
+.env.*
+CLAUDE.md
+.claude

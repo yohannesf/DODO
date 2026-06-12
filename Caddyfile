@@ -1,0 +1,7 @@
+# Local default: plain HTTP on :80 (mapped to HTTP_PORT, default 8080).
+# For production TLS, replace :80 with your domain — Caddy then provisions
+# certificates automatically.
+:80 {
+	encode gzip
+	reverse_proxy dodo-server:3000
+}

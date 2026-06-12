@@ -1,0 +1,50 @@
+services:
+  dodo-server:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://dodo:${POSTGRES_PASSWORD:-dodo}@db:5432/dodo
+      PORT: '3000'
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3000/api/health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # spec §11 calls this postgres:16-postgis; the canonical image is postgis/postgis.
+  # That image is amd64-only, so it is pinned to linux/amd64 (emulated on ARM
+  # hosts). ARM users can set POSTGIS_IMAGE=imresamu/postgis:16-3.5 for native.
+  db:
+    image: ${POSTGIS_IMAGE:-postgis/postgis:16-3.5}
+    platform: ${POSTGIS_PLATFORM:-linux/amd64}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dodo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dodo}
+      POSTGRES_DB: dodo
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U dodo -d dodo']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '${HTTP_PORT:-8080}:80'
+      - '${HTTPS_PORT:-8443}:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - dodo-server
+
+volumes:
+  pgdata:
+  caddy_data:
