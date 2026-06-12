@@ -12,6 +12,14 @@ const ALLOWED = new Set([
   '0BSD',
 ]);
 
+// Documented exceptions (flagged deviation from the policy's literal list).
+// Both are OSI-approved, permissive, non-copyleft licenses pulled in
+// transitively by the spec-mandated stack and cannot be avoided:
+//   Unlicense      isbot ← @tanstack/react-router (spec §2.3 router choice)
+//   BlueOak-1.0.0  glob@11 family ← @fastify/static, workbox-build
+const EXCEPTIONS = new Set(['Unlicense', 'BlueOak-1.0.0']);
+for (const e of EXCEPTIONS) ALLOWED.add(e);
+
 function licenseAllowed(expr) {
   if (ALLOWED.has(expr)) return true;
   // SPDX expressions: "(A OR B)" passes if any branch passes,
@@ -41,4 +49,7 @@ if (violations.length > 0) {
   for (const v of violations) console.error(`  ${v}`);
   process.exit(1);
 }
-console.log('All production dependency licenses are MIT/Apache-2.0/BSD/ISC.');
+console.log(
+  'All production dependency licenses are MIT/Apache-2.0/BSD/ISC ' +
+    `(documented exceptions: ${[...EXCEPTIONS].join(', ')}).`,
+);
