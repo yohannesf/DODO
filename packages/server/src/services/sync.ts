@@ -6,6 +6,8 @@ import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import {
   dataValueDeletePayloadSchema,
   dataValueUpsertPayloadSchema,
+  submissionCompletePayloadSchema,
+  parsePeriod,
   validateValue,
   PULL_PAGE_SIZE,
   SYNC_COLLECTIONS,
@@ -20,6 +22,8 @@ import type { Db } from '../db/index.js';
 import {
   category,
   categoryOption,
+  dataset,
+  datasetOrgUnits,
   categoryOptionCombo,
   dataElement,
   dataValue,
@@ -399,6 +403,89 @@ async function applyDataValueDelete(
   return { opId: op.opId, status: 'applied' };
 }
 
+async function applySubmissionComplete(
+  db: Db,
+  user: AuthUser,
+  op: SyncOp,
+): Promise<PushResult> {
+  const payload = submissionCompletePayloadSchema.parse(op.payload);
+
+  if (!(await canWriteOrgUnit(db, user, payload.orgUnitId))) {
+    return { opId: op.opId, status: 'rejected', error: 'org unit out of scope' };
+  }
+  const dsRows = await db
+    .select()
+    .from(dataset)
+    .where(and(eq(dataset.id, payload.datasetId), isNull(dataset.deletedAt)));
+  const ds = dsRows[0];
+  if (!ds) return { opId: op.opId, status: 'rejected', error: 'unknown dataset' };
+
+  const assigned = await db
+    .select()
+    .from(datasetOrgUnits)
+    .where(
+      and(
+        eq(datasetOrgUnits.datasetId, payload.datasetId),
+        eq(datasetOrgUnits.orgUnitId, payload.orgUnitId),
+      ),
+    );
+  if (assigned.length === 0) {
+    return { opId: op.opId, status: 'rejected', error: 'dataset not assigned here' };
+  }
+  const period = parsePeriod(payload.period);
+  if (!period || period.type !== ds.frequency) {
+    return {
+      opId: op.opId,
+      status: 'rejected',
+      error: `period must be ${ds.frequency.toLowerCase()}`,
+    };
+  }
+
+  const existing = await db
+    .select()
+    .from(submission)
+    .where(
+      and(
+        eq(submission.datasetId, payload.datasetId),
+        eq(submission.orgUnitId, payload.orgUnitId),
+        eq(submission.period, payload.period),
+      ),
+    );
+  const current = existing[0];
+  if (!current) {
+    await db.insert(submission).values({
+      id: payload.id,
+      datasetId: payload.datasetId,
+      orgUnitId: payload.orgUnitId,
+      period: payload.period,
+      status: 'completed',
+      completedBy: user.id,
+      completedAt: sql`now()`,
+      note: payload.note,
+    });
+    return { opId: op.opId, status: 'applied', serverVersion: 1 };
+  }
+  if (current.status === 'approved') {
+    return {
+      opId: op.opId,
+      status: 'rejected',
+      error: 'submission already approved',
+    };
+  }
+  await db
+    .update(submission)
+    .set({
+      status: 'completed',
+      completedBy: user.id,
+      completedAt: sql`now()`,
+      note: payload.note,
+      updatedAt: sql`now()`,
+      version: sql`${submission.version} + 1`,
+    })
+    .where(eq(submission.id, current.id));
+  return { opId: op.opId, status: 'applied', serverVersion: current.version + 1 };
+}
+
 export async function push(
   db: Db,
   user: AuthUser,
@@ -434,7 +521,9 @@ export async function push(
           r =
             op.kind === 'dataValue.upsert'
               ? await applyDataValueUpsert(txDb, user, op)
-              : await applyDataValueDelete(txDb, user, op);
+              : op.kind === 'dataValue.delete'
+                ? await applyDataValueDelete(txDb, user, op)
+                : await applySubmissionComplete(txDb, user, op);
         } catch (err) {
           // validation problems are permanent → rejected, never retried
           if (err instanceof AppError || err instanceof Error) {

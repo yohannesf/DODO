@@ -36,7 +36,20 @@ export const dataValueDeletePayloadSchema = z.object({
   id: z.string().uuid(),
 });
 
-export const SYNC_OP_KINDS = ['dataValue.upsert', 'dataValue.delete'] as const;
+export const submissionCompletePayloadSchema = z.object({
+  id: z.string().uuid(),
+  datasetId: z.string().uuid(),
+  orgUnitId: z.string().uuid(),
+  period: periodStringSchema,
+  note: z.string().max(2000).default(''),
+});
+export type SubmissionCompletePayload = z.infer<typeof submissionCompletePayloadSchema>;
+
+export const SYNC_OP_KINDS = [
+  'dataValue.upsert',
+  'dataValue.delete',
+  'submission.complete',
+] as const;
 
 export const syncOpSchema = z.object({
   opId: z.string().uuid(),

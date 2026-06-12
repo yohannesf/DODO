@@ -287,3 +287,59 @@ describe('status', () => {
     expect(forbidden.status).toBe(403);
   });
 });
+
+describe('submission.complete', () => {
+  it('completes a submission, replicates it, rejects bad periods', async () => {
+    // assign a dataset to North first
+    const ds = await api('POST', '/api/metadata/datasets', adminToken, {
+      name: 'North monthly',
+      code: 'DS-NORTH-M',
+      frequency: 'MONTHLY',
+      elements: [
+        { dataElementId: deBoreholesId, sortOrder: 0, section: '', required: true },
+      ],
+      orgUnitIds: [northId],
+    });
+
+    const subId = uuidv7();
+    const complete = (period: string, opId = uuidv7()) => ({
+      opId,
+      kind: 'submission.complete',
+      clientTs: new Date().toISOString(),
+      payload: {
+        id: subId,
+        datasetId: ds.body.id,
+        orgUnitId: northId,
+        period,
+        note: 'all done',
+      },
+    });
+
+    const bad = await api('POST', '/api/sync/push', fieldToken, {
+      deviceId: DEVICE_A,
+      ops: [complete('2026-Q1')],
+    });
+    expect(bad.body.results[0].status).toBe('rejected');
+    expect(bad.body.results[0].error).toMatch(/monthly/);
+
+    const op = complete('2026-05');
+    const ok = await api('POST', '/api/sync/push', fieldToken, {
+      deviceId: DEVICE_A,
+      ops: [op],
+    });
+    expect(ok.body.results[0]).toMatchObject({ status: 'applied', serverVersion: 1 });
+
+    const replay = await api('POST', '/api/sync/push', fieldToken, {
+      deviceId: DEVICE_A,
+      ops: [op],
+    });
+    expect(replay.body.results[0].status).toBe('duplicate');
+
+    const pulled = await pullAll(adminToken);
+    const sub = pulled.changes.find(
+      (c) => c.collection === 'submissions' && c.rowId === subId,
+    );
+    expect(sub?.op).toBe('upsert');
+    expect((sub!.row as { status: string }).status).toBe('completed');
+  });
+});
