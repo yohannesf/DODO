@@ -19,7 +19,6 @@ import {
 import type { Db } from '../db/index.js';
 import {
   category,
-  categoryCombo,
   categoryOption,
   categoryOptionCombo,
   dataElement,
