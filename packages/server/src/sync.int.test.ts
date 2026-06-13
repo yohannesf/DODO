@@ -90,6 +90,18 @@ beforeAll(async () => {
   });
   deBoreholesId = de.body.id;
 
+  // values are only accepted for periods open in a dataset collecting the
+  // element at the org unit (spec §7.3)
+  await api('POST', '/api/metadata/datasets', adminToken, {
+    name: 'Sync Fixture Monthly',
+    code: 'SYNC-FIX-M',
+    frequency: 'MONTHLY',
+    elements: [
+      { dataElementId: deBoreholesId, sortOrder: 0, section: '', required: false },
+    ],
+    orgUnitIds: [northId, southId],
+  });
+
   const roles = await api('GET', '/api/metadata/roles', adminToken);
   const dataEntry = roles.body.find((r: { code: string }) => r.code === 'DATA_ENTRY');
   await api('POST', '/api/metadata/users', adminToken, {
@@ -256,6 +268,69 @@ describe('push', () => {
     expect(res2.body.results[0].error).toMatch(/scope/);
   });
 
+  it('rejects periods outside the dataset entry window', async () => {
+    const ym = (offset: number) => {
+      const d = new Date();
+      d.setUTCDate(1);
+      d.setUTCMonth(d.getUTCMonth() + offset);
+      return d.toISOString().slice(0, 7);
+    };
+
+    // future period — openFuturePeriods is 0 on the fixture dataset
+    const future = op({ opId: uuidv7() });
+    (future.payload as { id: string }).id = uuidv7();
+    (future.payload as { period: string }).period = ym(1);
+    const res = await api('POST', '/api/sync/push', fieldToken, {
+      deviceId: DEVICE_A,
+      ops: [future],
+    });
+    expect(res.body.results[0]).toMatchObject({
+      status: 'rejected',
+      error: 'period is in the future',
+    });
+
+    // expired period — dataset with a 1-day expiry window
+    const deExp = await api('POST', '/api/metadata/data-elements', adminToken, {
+      name: 'Expiring element',
+      shortName: 'Expiring',
+      code: 'DE-EXP',
+      valueType: 'INTEGER_ZERO_OR_POSITIVE',
+    });
+    await api('POST', '/api/metadata/datasets', adminToken, {
+      name: 'Expiring Monthly',
+      code: 'SYNC-EXP-M',
+      frequency: 'MONTHLY',
+      expiryDays: 1,
+      elements: [
+        { dataElementId: deExp.body.id, sortOrder: 0, section: '', required: false },
+      ],
+      orgUnitIds: [northId],
+    });
+    const expired = op({ opId: uuidv7() });
+    (expired.payload as { id: string }).id = uuidv7();
+    (expired.payload as { dataElementId: string }).dataElementId = deExp.body.id;
+    (expired.payload as { period: string }).period = ym(-3);
+    const res2 = await api('POST', '/api/sync/push', fieldToken, {
+      deviceId: DEVICE_A,
+      ops: [expired],
+    });
+    expect(res2.body.results[0]).toMatchObject({
+      status: 'rejected',
+      error: 'entry for this period has closed',
+    });
+
+    // current period on the same expiring dataset is accepted
+    const ok = op({ opId: uuidv7() });
+    (ok.payload as { id: string }).id = uuidv7();
+    (ok.payload as { dataElementId: string }).dataElementId = deExp.body.id;
+    (ok.payload as { period: string }).period = ym(0);
+    const res3 = await api('POST', '/api/sync/push', fieldToken, {
+      deviceId: DEVICE_A,
+      ops: [ok],
+    });
+    expect(res3.body.results[0].status).toBe('applied');
+  });
+
   it('replicates pushed values to other clients via pull', async () => {
     const adminPull = await pullAll(adminToken);
     const valueChange = adminPull.changes.find(
@@ -376,7 +451,7 @@ describe('m6: approvals, hardening, exports', () => {
       orgUnitIds: [northId],
     });
 
-    // push an offending value for 2026-08
+    // push an offending value for 2026-03 (an open past period)
     const valueOp = {
       opId: uuidv7(),
       kind: 'dataValue.upsert',
@@ -385,7 +460,7 @@ describe('m6: approvals, hardening, exports', () => {
         id: uuidv7(),
         dataElementId: deBoreholesId,
         orgUnitId: northId,
-        period: '2026-08',
+        period: '2026-03',
         categoryOptionComboId: '019754a0-0000-7000-8000-00000000c0c1',
         value: '12',
       },
@@ -403,7 +478,7 @@ describe('m6: approvals, hardening, exports', () => {
         id,
         datasetId: ds.body.id,
         orgUnitId: northId,
-        period: '2026-08',
+        period: '2026-03',
         note: '',
       },
     });
@@ -486,7 +561,7 @@ describe('m6: approvals, hardening, exports', () => {
     });
     expect(csv.statusCode).toBe(200);
     expect(csv.body).toContain('DE-BH');
-    expect(csv.body).toContain('2026-08');
+    expect(csv.body).toContain('2026-03');
 
     const xlsx = await app.inject({
       method: 'GET',

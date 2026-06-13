@@ -183,6 +183,118 @@ export function offsetPeriod(period: Period, n: number): Period {
   }
 }
 
+/** First instant of the period (UTC). */
+export function periodStartDate(period: Period): Date {
+  switch (period.type) {
+    case 'YEARLY':
+      return new Date(Date.UTC(period.year, 0, 1));
+    case 'QUARTERLY':
+      return new Date(Date.UTC(period.year, (period.quarter - 1) * 3, 1));
+    case 'MONTHLY':
+      return new Date(Date.UTC(period.year, period.month - 1, 1));
+    case 'DAILY':
+      return new Date(Date.UTC(period.year, period.month - 1, period.day));
+    case 'WEEKLY': {
+      const jan4 = new Date(Date.UTC(period.year, 0, 4));
+      const week1Monday = new Date(jan4);
+      week1Monday.setUTCDate(jan4.getUTCDate() - ((jan4.getUTCDay() || 7) - 1));
+      const monday = new Date(week1Monday);
+      monday.setUTCDate(week1Monday.getUTCDate() + (period.week - 1) * 7);
+      return monday;
+    }
+  }
+}
+
+/** First instant AFTER the period (UTC) — exclusive end. */
+export function periodEndExclusive(period: Period): Date {
+  return periodStartDate(offsetPeriod(period, 1));
+}
+
+export type PeriodOpenStatus =
+  | 'open'
+  | 'invalid'
+  | 'wrong-frequency'
+  | 'future'
+  | 'expired';
+
+export interface PeriodWindow {
+  frequency: PeriodType;
+  /** how many periods beyond the current one stay open (spec §4.1) */
+  openFuturePeriods: number;
+  /** entry closes this many days after the period ends; 0 = never */
+  expiryDays: number;
+}
+
+/**
+ * Whether a period accepts data entry for a dataset right now (spec §7.3).
+ * Client and server must run this exact rule — the client to constrain the
+ * period picker, the server because it never trusts the client.
+ */
+export function periodOpenStatus(
+  input: string,
+  window: PeriodWindow,
+  now: Date = new Date(),
+): PeriodOpenStatus {
+  const period = parsePeriod(input);
+  if (!period) return 'invalid';
+  if (period.type !== window.frequency) return 'wrong-frequency';
+
+  const latestOpen = offsetPeriod(
+    periodContaining(window.frequency, now),
+    Math.max(0, window.openFuturePeriods),
+  );
+  // canonical encodings of one period type sort lexicographically
+  if (formatPeriod(period) > formatPeriod(latestOpen)) return 'future';
+
+  if (window.expiryDays > 0) {
+    const closesAt =
+      periodEndExclusive(period).getTime() + window.expiryDays * 86_400_000;
+    if (now.getTime() >= closesAt) return 'expired';
+  }
+  return 'open';
+}
+
+/** Open periods for a window, newest first — drives the entry period picker. */
+export function openPeriods(
+  window: PeriodWindow,
+  limit = 24,
+  now: Date = new Date(),
+): string[] {
+  const current = periodContaining(window.frequency, now);
+  const result: string[] = [];
+  for (let n = Math.max(0, window.openFuturePeriods); result.length < limit; n--) {
+    const candidate = formatPeriod(offsetPeriod(current, n));
+    const status = periodOpenStatus(candidate, window, now);
+    if (status === 'expired') break;
+    if (status === 'open') result.push(candidate);
+  }
+  return result;
+}
+
+const MONTH_FMT = new Intl.DateTimeFormat('en', {
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+/** "2026-06" → "Jun 2026", "2026-Q2" → "Q2 2026", "2026-W14" → "W14 2026". */
+export function humanisePeriod(input: string): string {
+  const period = parsePeriod(input);
+  if (!period) return input;
+  switch (period.type) {
+    case 'YEARLY':
+      return String(period.year);
+    case 'QUARTERLY':
+      return `Q${period.quarter} ${period.year}`;
+    case 'MONTHLY':
+      return MONTH_FMT.format(periodStartDate(period));
+    case 'WEEKLY':
+      return `W${period.week} ${period.year}`;
+    case 'DAILY':
+      return input;
+  }
+}
+
 export const RELATIVE_PERIODS = [
   'THIS_MONTH',
   'LAST_MONTH',

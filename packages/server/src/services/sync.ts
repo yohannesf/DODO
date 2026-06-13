@@ -10,6 +10,7 @@ import {
   rulesForDataset,
   submissionCompletePayloadSchema,
   parsePeriod,
+  periodOpenStatus,
   validateValue,
   PULL_PAGE_SIZE,
   SYNC_COLLECTIONS,
@@ -25,6 +26,7 @@ import {
   category,
   categoryOption,
   dataset,
+  datasetElements,
   datasetOrgUnits,
   categoryOptionCombo,
   dataElement,
@@ -321,6 +323,41 @@ async function applyDataValueUpsert(
     return { opId: op.opId, status: 'rejected', error: valueError };
   }
 
+  // Period window (spec §7.3): the period must be open for at least one live
+  // dataset that contains this element and is assigned to this org unit.
+  const candidateDatasets = await db
+    .select({
+      frequency: dataset.frequency,
+      openFuturePeriods: dataset.openFuturePeriods,
+      expiryDays: dataset.expiryDays,
+    })
+    .from(dataset)
+    .innerJoin(datasetElements, eq(datasetElements.datasetId, dataset.id))
+    .innerJoin(datasetOrgUnits, eq(datasetOrgUnits.datasetId, dataset.id))
+    .where(
+      and(
+        eq(datasetElements.dataElementId, payload.dataElementId),
+        eq(datasetOrgUnits.orgUnitId, payload.orgUnitId),
+        isNull(dataset.deletedAt),
+      ),
+    );
+  if (candidateDatasets.length === 0) {
+    return {
+      opId: op.opId,
+      status: 'rejected',
+      error: 'no dataset collects this element at this org unit',
+    };
+  }
+  const statuses = candidateDatasets.map((d) => periodOpenStatus(payload.period, d));
+  if (!statuses.includes('open')) {
+    const reason = statuses.includes('future')
+      ? 'period is in the future'
+      : statuses.includes('expired')
+        ? 'entry for this period has closed'
+        : 'period does not match the dataset frequency';
+    return { opId: op.opId, status: 'rejected', error: reason };
+  }
+
   const existing = await db
     .select()
     .from(dataValue)
@@ -464,6 +501,17 @@ async function applySubmissionComplete(
       opId: op.opId,
       status: 'rejected',
       error: `period must be ${ds.frequency.toLowerCase()}`,
+    };
+  }
+  const windowStatus = periodOpenStatus(payload.period, ds);
+  if (windowStatus !== 'open') {
+    return {
+      opId: op.opId,
+      status: 'rejected',
+      error:
+        windowStatus === 'future'
+          ? 'period is in the future'
+          : 'entry for this period has closed',
     };
   }
 

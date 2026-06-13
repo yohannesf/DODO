@@ -44,6 +44,14 @@ test.beforeAll(async ({ request }) => {
     code: 'ZZ4-DE',
     valueType: 'INTEGER_ZERO_OR_POSITIVE',
   });
+  // entry windows (spec §7.3) require a dataset collecting the element
+  await adminApi(request, 'post', '/api/metadata/datasets', {
+    name: 'ZZ4 monthly',
+    code: 'ZZ4-DS',
+    frequency: 'MONTHLY',
+    elements: [{ dataElementId: de.id, sortOrder: 0, section: '', required: false }],
+    orgUnitIds: [ou.id],
+  });
   const uuid = () => crypto.randomUUID();
   const push = await adminApi(request, 'post', '/api/sync/push', {
     deviceId: uuid(),

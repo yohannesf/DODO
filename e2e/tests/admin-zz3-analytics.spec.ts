@@ -39,6 +39,14 @@ test.beforeAll(async ({ request }) => {
     code: 'ZZ3-DE',
     valueType: 'INTEGER_ZERO_OR_POSITIVE',
   });
+  // entry windows (spec §7.3) require a dataset collecting the element
+  await adminApi(request, 'post', '/api/metadata/datasets', {
+    name: 'ZZ3 monthly',
+    code: 'ZZ3-DS',
+    frequency: 'MONTHLY',
+    elements: [{ dataElementId: de.id, sortOrder: 0, section: '', required: false }],
+    orgUnitIds: [ou.id],
+  });
   // 10 per month for three months — used by test-evaluate and Explore
   const uuid = () => crypto.randomUUID();
   const ops = ['2026-01', '2026-02', '2026-03'].map((pe) => ({

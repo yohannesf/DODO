@@ -181,6 +181,20 @@ beforeAll(async () => {
   const cocF = cocs.find((c: { name: string }) => c.name === 'Female').id;
   const cocM = cocs.find((c: { name: string }) => c.name === 'Male').id;
 
+  // entry windows (spec §7.3) require a dataset collecting these elements
+  await api('POST', '/api/metadata/datasets', {
+    name: 'Analytics fixture monthly',
+    code: 'AN-DS-M',
+    frequency: 'MONTHLY',
+    elements: [deFlowId, deStockId, dePeopleId].map((id, idx) => ({
+      dataElementId: id,
+      sortOrder: idx,
+      section: '',
+      required: false,
+    })),
+    orgUnitIds: [d1Id, d2Id],
+  });
+
   // fixture values — hand-calculated expectations live in the tests below
   await pushValues([
     // flow (sum): boreholes

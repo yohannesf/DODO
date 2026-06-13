@@ -105,7 +105,8 @@ async function waitSynced(page: Page) {
 async function selectContext(page: Page, datasetName: string, period: string) {
   await page.getByLabel('Dataset').selectOption({ label: datasetName });
   await page.getByLabel('Org unit').selectOption({ label: 'Sync Test Site' });
-  await page.locator('input[type="month"]').fill(period);
+  // the period picker only offers open periods (spec §7.3)
+  await page.getByLabel('Period', { exact: true }).selectOption(period);
   await expect(page.getByTestId('entry-form')).toBeVisible();
 }
 
@@ -196,15 +197,16 @@ test('offline e2e #3: replay after dropped responses creates no duplicates', asy
     }
     await route.continue();
   });
-
   await loginUi(page);
   await waitSynced(page);
 
   await selectContext(page, fixtures.datasets[0]!.name, '2026-06');
   await fillDataset(page, (i) => String(40 + i));
 
+  // the chip flips to pending a tick after the saves land in Dexie — poll
+  // the drop counter itself instead of racing the chip
+  await expect.poll(() => drops, { timeout: 15_000 }).toBe(0);
   await waitSynced(page);
-  expect(drops).toBe(0); // both simulated drops actually happened
 
   const values = await serverValues(request);
   // 50 from test #1 + 5 new ones — replays must not duplicate anything

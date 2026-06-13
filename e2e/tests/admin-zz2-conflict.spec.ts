@@ -12,9 +12,11 @@ import {
 // directions (take server, keep mine).
 
 const BASE = 'http://127.0.0.1:3100';
+const THIS_MONTH = new Date().toISOString().slice(0, 7);
 
 let adminToken: string;
 let datasetName: string;
+let conflictDeId: string;
 
 async function adminApi(
   request: APIRequestContext,
@@ -47,6 +49,7 @@ test.beforeAll(async ({ request }) => {
     code: 'CONF-DE',
     valueType: 'INTEGER_ZERO_OR_POSITIVE',
   });
+  conflictDeId = de.id;
   datasetName = 'Conflict Dataset';
   await adminApi(request, 'post', '/api/metadata/datasets', {
     name: datasetName,
@@ -85,7 +88,8 @@ async function openClient(browser: Browser): Promise<{
   });
   await page.getByLabel('Dataset').selectOption({ label: datasetName });
   await page.getByLabel('Org unit').selectOption({ label: 'Conflict Site' });
-  await page.locator('input[type="month"]').fill('2026-07');
+  // current month — future periods are no longer enterable (spec §7.3)
+  await page.getByLabel('Period', { exact: true }).selectOption(THIS_MONTH);
   await expect(page.getByTestId('entry-form')).toBeVisible();
   return { context, page };
 }
@@ -136,11 +140,15 @@ test('offline e2e #2: conflict surfaces and resolves in both directions', async 
           '/api/sync/pull?cursor=0&collections=dataValues',
         );
         return (
-          pull.changes as Array<{ op: string; row?: { period: string; value: string } }>
+          pull.changes as Array<{
+            op: string;
+            row?: { period: string; value: string; dataElementId: string };
+          }>
         )
           .filter((c) => c.op === 'upsert')
           .map((c) => c.row!)
-          .find((r) => r.period === '2026-07')?.value;
+          .find((r) => r.period === THIS_MONTH && r.dataElementId === conflictDeId)
+          ?.value;
       },
       { timeout: 20_000 },
     )
@@ -177,11 +185,14 @@ test('offline e2e #2: conflict surfaces and resolves in both directions', async 
           '/api/sync/pull?cursor=0&collections=dataValues',
         );
         const row = (
-          pull.changes as Array<{ op: string; row?: { period: string; value: string } }>
+          pull.changes as Array<{
+            op: string;
+            row?: { period: string; value: string; dataElementId: string };
+          }>
         )
           .filter((c) => c.op === 'upsert')
           .map((c) => c.row!)
-          .find((r) => r.period === '2026-07');
+          .find((r) => r.period === THIS_MONTH && r.dataElementId === conflictDeId);
         return row?.value;
       },
       { timeout: 20_000 },
@@ -212,11 +223,14 @@ test('offline e2e #2: conflict surfaces and resolves in both directions', async 
     '/api/sync/pull?cursor=0&collections=dataValues',
   );
   const values = (
-    pull.changes as Array<{ op: string; row?: { value: string; period: string } }>
+    pull.changes as Array<{
+      op: string;
+      row?: { value: string; period: string; dataElementId: string };
+    }>
   )
     .filter((c) => c.op === 'upsert')
     .map((c) => c.row!)
-    .filter((r) => r.period === '2026-07');
+    .filter((r) => r.period === THIS_MONTH && r.dataElementId === conflictDeId);
   expect(values).toHaveLength(1);
   expect(values[0]!.value).toBe('110');
 

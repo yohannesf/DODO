@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatPeriod,
+  humanisePeriod,
   isValidPeriod,
   offsetPeriod,
+  openPeriods,
   parsePeriod,
   periodContaining,
+  periodOpenStatus,
   periodType,
   resolveRelativePeriods,
 } from './periods.js';
@@ -142,5 +145,83 @@ describe('offsetPeriod / periodContaining / relative periods', () => {
       '2025-Q4',
       '2026-Q1',
     ]);
+  });
+});
+
+describe('periodOpenStatus (spec §7.3 entry windows)', () => {
+  const now = new Date('2026-06-12T12:00:00Z');
+  const monthly = { frequency: 'MONTHLY', openFuturePeriods: 0, expiryDays: 0 } as const;
+
+  it('accepts the current and past periods', () => {
+    expect(periodOpenStatus('2026-06', monthly, now)).toBe('open');
+    expect(periodOpenStatus('2024-01', monthly, now)).toBe('open');
+  });
+
+  it('rejects future periods beyond the allowance', () => {
+    expect(periodOpenStatus('2026-07', monthly, now)).toBe('future');
+    expect(periodOpenStatus('2027-12', monthly, now)).toBe('future');
+    expect(periodOpenStatus('2026-07', { ...monthly, openFuturePeriods: 1 }, now)).toBe(
+      'open',
+    );
+    expect(periodOpenStatus('2026-08', { ...monthly, openFuturePeriods: 1 }, now)).toBe(
+      'future',
+    );
+  });
+
+  it('expires periods after expiryDays past their end', () => {
+    const window = { ...monthly, expiryDays: 10 };
+    // May ended 2026-05-31; +10 days = closes at 2026-06-11T00:00Z
+    expect(periodOpenStatus('2026-05', window, now)).toBe('expired');
+    expect(periodOpenStatus('2026-06', window, now)).toBe('open');
+    expect(periodOpenStatus('2026-05', window, new Date('2026-06-10T23:59:00Z'))).toBe(
+      'open',
+    );
+  });
+
+  it('flags frequency mismatches and garbage', () => {
+    expect(periodOpenStatus('2026-Q2', monthly, now)).toBe('wrong-frequency');
+    expect(periodOpenStatus('always', monthly, now)).toBe('invalid');
+  });
+
+  it('works for quarterly and yearly windows', () => {
+    const q = { frequency: 'QUARTERLY', openFuturePeriods: 0, expiryDays: 0 } as const;
+    expect(periodOpenStatus('2026-Q2', q, now)).toBe('open');
+    expect(periodOpenStatus('2026-Q3', q, now)).toBe('future');
+    const y = { frequency: 'YEARLY', openFuturePeriods: 0, expiryDays: 0 } as const;
+    expect(periodOpenStatus('2027', y, now)).toBe('future');
+  });
+});
+
+describe('humanisePeriod', () => {
+  it('renders each period type for display', () => {
+    expect(humanisePeriod('2026-06')).toBe('Jun 2026');
+    expect(humanisePeriod('2026-Q2')).toBe('Q2 2026');
+    expect(humanisePeriod('2026')).toBe('2026');
+    expect(humanisePeriod('2026-W14')).toBe('W14 2026');
+    expect(humanisePeriod('2026-03-15')).toBe('2026-03-15');
+    expect(humanisePeriod('nonsense')).toBe('nonsense');
+  });
+});
+
+describe('openPeriods', () => {
+  const now = new Date('2026-06-12T12:00:00Z');
+
+  it('lists newest-first including allowed future periods', () => {
+    const list = openPeriods(
+      { frequency: 'MONTHLY', openFuturePeriods: 1, expiryDays: 0 },
+      4,
+      now,
+    );
+    expect(list).toEqual(['2026-07', '2026-06', '2026-05', '2026-04']);
+  });
+
+  it('stops at the expiry horizon', () => {
+    // expiryDays 5: May closed on Jun 6, April on May 6 — only June is open
+    const list = openPeriods(
+      { frequency: 'MONTHLY', openFuturePeriods: 0, expiryDays: 5 },
+      24,
+      now,
+    );
+    expect(list).toEqual(['2026-06']);
   });
 });

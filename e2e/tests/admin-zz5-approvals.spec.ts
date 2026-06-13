@@ -137,12 +137,12 @@ async function loginAdmin(page: Page) {
 }
 
 test('two-level approval chain approves through the UI', async ({ page, request }) => {
-  const subId = await completeSubmission(request, '2026-09');
+  const subId = await completeSubmission(request, '2026-04');
 
   await loginAdmin(page);
   await page.goto('/review');
   const row = page.getByRole('row').filter({ hasText: 'ZZ5 sanitation report' });
-  await expect(row).toContainText('2026-09');
+  await expect(row).toContainText('2026-04');
   await expect(row).toContainText('level 1/2');
 
   await row.getByRole('button', { name: 'Approve…' }).click();
@@ -175,15 +175,15 @@ test('two-level approval chain approves through the UI', async ({ page, request 
 });
 
 test('rejection ends the chain with a reason', async ({ page, request }) => {
-  const subId = await completeSubmission(request, '2026-10');
+  const subId = await completeSubmission(request, '2026-03');
 
   await loginAdmin(page);
   await page.goto('/review');
-  const row = page.getByRole('row').filter({ hasText: '2026-10' });
+  const row = page.getByRole('row').filter({ hasText: '2026-03' });
   await row.getByRole('button', { name: 'Reject…' }).click();
   await page.getByLabel('Reason (required)').fill('totals look wrong');
   await page.getByRole('dialog').getByRole('button', { name: 'Reject' }).click();
-  await expect(page.getByRole('row').filter({ hasText: '2026-10' })).toHaveCount(0);
+  await expect(page.getByRole('row').filter({ hasText: '2026-03' })).toHaveCount(0);
 
   await expect
     .poll(

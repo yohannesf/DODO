@@ -1,14 +1,18 @@
 // Data entry (spec §8.3): spreadsheet-like grid over Dexie, full keyboard
 // model, instant local saves, validation at entry time, Mark complete with a
 // completeness summary. No Save button for values — by design.
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   DEFAULT_CATEGORY_OPTION_COMBO_ID,
   collectRefs,
   evaluateRules,
+  formatPeriod,
+  humanisePeriod,
   isValidPeriod,
+  openPeriods,
   parseExpression,
+  periodContaining,
   rulesForDataset,
   uuidv7,
   type CategoryOptionCombo,
@@ -142,7 +146,39 @@ export function EnterData() {
 
   const model = useEntryModel(datasetId, orgUnitId, period);
   const dataset = model.datasets?.find((d) => d.id === datasetId) ?? null;
-  const periodOk = period !== '' && isValidPeriod(period);
+
+  // Only open periods are selectable (spec §7.3) — newest first.
+  const allowedPeriods = useMemo(
+    () =>
+      dataset
+        ? openPeriods({
+            frequency: dataset.frequency,
+            openFuturePeriods: dataset.openFuturePeriods,
+            expiryDays: dataset.expiryDays,
+          })
+        : [],
+    [dataset],
+  );
+  const periodIndex = allowedPeriods.indexOf(period);
+  const stepPeriod = (delta: number) => {
+    const next = allowedPeriods[periodIndex + delta];
+    if (next) {
+      setPeriod(next);
+      persist('period', next);
+    }
+  };
+  useEffect(() => {
+    // clamp a stale/closed persisted period: prefer the period containing
+    // today, else the newest open one
+    if (dataset && allowedPeriods.length > 0 && !allowedPeriods.includes(period)) {
+      const today = formatPeriod(periodContaining(dataset.frequency, new Date()));
+      const chosen = allowedPeriods.includes(today) ? today : allowedPeriods[0]!;
+      setPeriod(chosen);
+      persist('period', chosen);
+    }
+  }, [dataset, allowedPeriods, period]);
+
+  const periodOk = period !== '' && isValidPeriod(period) && periodIndex >= 0;
   const ready = dataset && orgUnitId && periodOk;
 
   const [conflictTarget, setConflictTarget] = useState<{
@@ -384,35 +420,42 @@ export function EnterData() {
               ))}
           </Select>
         </Field>
-        <Field
-          label={`Period (${dataset?.frequency.toLowerCase() ?? '—'})`}
-          error={period !== '' && !periodOk ? 'not a valid period' : undefined}
-        >
-          {dataset?.frequency === 'MONTHLY' ? (
-            <Input
-              type="month"
+        <Field label={`Period (${dataset?.frequency.toLowerCase() ?? '—'})`}>
+          {/* only open periods are offered — closed/future entry is
+              impossible from the UI and re-rejected by the server (§7.3) */}
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              aria-label="previous period"
+              disabled={!dataset || periodIndex >= allowedPeriods.length - 1}
+              onClick={() => stepPeriod(1)}
+            >
+              ←
+            </Button>
+            <Select
+              aria-label="Period"
               value={period}
+              disabled={!dataset}
               onChange={(e) => {
                 setPeriod(e.target.value);
                 persist('period', e.target.value);
               }}
-            />
-          ) : (
-            <Input
-              placeholder={
-                dataset?.frequency === 'QUARTERLY'
-                  ? '2026-Q2'
-                  : dataset?.frequency === 'YEARLY'
-                    ? '2026'
-                    : '2026-05-14'
-              }
-              value={period}
-              onChange={(e) => {
-                setPeriod(e.target.value);
-                persist('period', e.target.value);
-              }}
-            />
-          )}
+            >
+              {allowedPeriods.map((p) => (
+                <option key={p} value={p}>
+                  {humanisePeriod(p)}
+                </option>
+              ))}
+            </Select>
+            <Button
+              size="sm"
+              aria-label="next period"
+              disabled={!dataset || periodIndex <= 0}
+              onClick={() => stepPeriod(-1)}
+            >
+              →
+            </Button>
+          </div>
         </Field>
       </div>
 
