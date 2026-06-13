@@ -10,6 +10,7 @@ import { UpdateToast } from './shell/UpdateToast';
 import { useAuth } from './auth/store';
 import { startSyncLoop } from './sync/engine';
 import { LoginPage } from './pages/Login';
+import { Styleguide } from './pages/Styleguide';
 import { EnterData } from './pages/EnterData';
 import { Review } from './pages/Review';
 import { Dashboards } from './pages/Dashboards';
@@ -43,6 +44,14 @@ const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
   component: LoginPage,
+});
+
+// Dev-only visual reference (design language §10.10). Top-level, no auth — it
+// renders only static sample data, never touches the API or sync store.
+const styleguideRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dev/styleguide',
+  component: Styleguide,
 });
 
 let booted: Promise<void> | null = null;
@@ -85,6 +94,7 @@ const configureChild = { getParentRoute: () => configureRoute };
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
+  styleguideRoute,
   authedRoute.addChildren([
     indexRoute,
     createRoute({ ...inShell, path: '/enter', component: EnterData }),

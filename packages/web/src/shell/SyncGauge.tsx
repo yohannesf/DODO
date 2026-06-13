@@ -5,11 +5,14 @@
 // adds the frame, semantic colour, a "synced N ago" meta line, and — the only
 // animation in the app — a 1.2s pulse while syncing (disabled by
 // prefers-reduced-motion via the global rule).
+//
+// Split into a pure view (every state renderable, e.g. in the styleguide) and
+// a connected wrapper bound to the live sync store.
 import { Link } from '@tanstack/react-router';
 import { useSyncExternalStore } from 'react';
 import { cx } from '../components';
 import { t } from '../i18n';
-import { useSyncStatus } from '../sync/engine';
+import { useSyncStatus, type SyncStatusKind } from '../sync/engine';
 
 function subscribeOnline(onChange: () => void) {
   window.addEventListener('online', onChange);
@@ -31,14 +34,24 @@ function ago(iso: string | null): string {
   return `synced ${Math.round(hrs / 24)}d ago`;
 }
 
-export function SyncGauge() {
-  const online = useSyncExternalStore(
-    subscribeOnline,
-    () => navigator.onLine,
-    () => true,
-  );
-  const { status, pending, failed, conflicts, lastSyncAt } = useSyncStatus();
+export interface SyncGaugeState {
+  online: boolean;
+  status: SyncStatusKind;
+  pending: number;
+  failed: number;
+  conflicts: number;
+  lastSyncAt: string | null;
+}
 
+/** Pure view — renders any sync state (used live and in the styleguide). */
+export function SyncGaugeView({
+  online,
+  status,
+  pending,
+  failed,
+  conflicts,
+  lastSyncAt,
+}: SyncGaugeState) {
   // status text — must match the strings the e2e asserts on (do not reword)
   let text: string;
   let tone: 'ok' | 'warn' | 'danger' | 'primary';
@@ -69,7 +82,6 @@ export function SyncGauge() {
     primary: 'text-primary',
   }[tone];
 
-  // secondary line: foreground unsynced/conflict count, else the last-sync time
   const meta =
     conflicts > 0
       ? `▣ ${conflicts} to resolve`
@@ -100,5 +112,25 @@ export function SyncGauge() {
         {meta}
       </span>
     </Link>
+  );
+}
+
+/** Connected — binds the view to the live sync store + connectivity. */
+export function SyncGauge() {
+  const online = useSyncExternalStore(
+    subscribeOnline,
+    () => navigator.onLine,
+    () => true,
+  );
+  const { status, pending, failed, conflicts, lastSyncAt } = useSyncStatus();
+  return (
+    <SyncGaugeView
+      online={online}
+      status={status}
+      pending={pending}
+      failed={failed}
+      conflicts={conflicts}
+      lastSyncAt={lastSyncAt}
+    />
   );
 }
