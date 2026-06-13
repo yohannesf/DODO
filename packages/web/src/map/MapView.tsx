@@ -51,7 +51,14 @@ function fitTo(map: maplibregl.Map, fc: FeatureCollection): void {
   for (const f of fc.features) {
     extend((f.geometry as { coordinates: unknown } | null)?.coordinates);
   }
-  if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 48, maxZoom: 10 });
+  if (!bounds.isEmpty()) {
+    // padding must scale to the canvas: a fixed 48px eats a small dashboard
+    // widget (96px of padding on a ~140px-tall canvas zooms everything out to
+    // a dot). Cap at ~10% of the smaller dimension.
+    const c = map.getCanvas();
+    const pad = Math.max(6, Math.min(40, Math.min(c.clientWidth, c.clientHeight) * 0.1));
+    map.fitBounds(bounds, { padding: pad, maxZoom: 10, duration: 0 });
+  }
 }
 
 export function MapView({
@@ -101,6 +108,7 @@ export function MapView({
   const geojsonRef = useRef(geojson);
   geojsonRef.current = geojson;
   const loadedRef = useRef(false);
+  const userInteractedRef = useRef(false);
 
   // Create the map once per basemap; data updates flow through setData below.
   // (Recreating the map on every data change races MapLibre's async load and
@@ -126,6 +134,13 @@ export function MapView({
       attributionControl: false,
     });
     mapRef.current = map;
+    // stop auto-fitting once the user pans/zooms by hand (their gestures carry
+    // an originalEvent; programmatic camera moves do not)
+    const markInteracted = (e: { originalEvent?: unknown }) => {
+      if (e.originalEvent) userInteractedRef.current = true;
+    };
+    map.on('dragstart', markInteracted);
+    map.on('zoomstart', markInteracted);
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }));
     // protomaps basemaps are ODbL — attribution required (ADR 001)
     map.addControl(
@@ -223,8 +238,15 @@ export function MapView({
       })();
     });
 
-    // MapLibre does not auto-resize — keep the canvas matched to its container
-    const ro = new ResizeObserver(() => map.resize());
+    // MapLibre does not auto-resize — keep the canvas matched to its container.
+    // Re-fit after a resize (e.g. a dashboard grid cell laying out, which the
+    // initial fitBounds may have missed at zero size) until the user takes over.
+    const ro = new ResizeObserver(() => {
+      map.resize();
+      if (loadedRef.current && !userInteractedRef.current) {
+        fitTo(map, geojsonRef.current);
+      }
+    });
     ro.observe(container.current);
 
     return () => {

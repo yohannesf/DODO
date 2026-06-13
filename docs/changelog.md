@@ -8,6 +8,11 @@ plus the period entry-window gap found in review:
 - Entry cells render as visible bordered inputs with hover/focus states and
   whole-cell validation colors; disaggregated rows get automatic totals;
   the dataset/org unit/period selector is a distinct toolbar.
+- Dashboard map widget fixed: it now colours every geo org unit by its own
+  value (the seeded widget had no `ouIds`, so every site rendered grey), and
+  `fitBounds` padding scales to the canvas so a small grid-cell map no longer
+  collapses every point into one blob. MapView re-fits when its container
+  first lays out (until the user pans/zooms).
 - Org units are now chosen through a searchable tree popover
   (`OrgUnitSelect`, on Radix Popover) instead of a flat indented `<select>`
   that was unusable for a 40-unit hierarchy — wired into Enter Data, Users

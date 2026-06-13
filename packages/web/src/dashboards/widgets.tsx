@@ -1,5 +1,5 @@
 // Dashboard widgets (spec §8.6): each widget = a saved analytics query.
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as echarts from 'echarts/core';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { DashboardItem, Target } from '@dodo/shared';
@@ -222,16 +222,44 @@ export function MapWidget({
   config: WidgetConfig;
   filters: GlobalFilters;
 }) {
-  const { result, asOf, error } = useWidgetData(widgetQuery(config), filters);
+  const dx = config.dx?.[0];
+  // a coverage map colours EVERY geo org unit by its own subtree value, so it
+  // queries all of them — not the widget's configured root (which would leave
+  // every site grey). Mirrors the standalone Maps page.
+  const geoOrgUnits = useLiveQuery(
+    () =>
+      hasDb()
+        ? getDb()
+            .orgUnits.filter((o) => o.geometry !== null)
+            .toArray()
+        : [],
+    [],
+  );
   const targets = useLiveQuery(
     () => (hasDb() ? (getDb().targets.toArray() as unknown as Promise<Target[]>) : []),
     [],
   );
+  const ouIds = useMemo(() => (geoOrgUnits ?? []).map((o) => o.id), [geoOrgUnits]);
+  const query = useMemo<WidgetQuery | null>(
+    () =>
+      dx && ouIds.length > 0
+        ? {
+            dx: [dx],
+            ouIds,
+            ouMode: 'subtree',
+            relativePeriod: config.relativePeriod ?? 'THIS_MONTH',
+            peTotal: true,
+          }
+        : null,
+    [dx, ouIds, config.relativePeriod],
+  );
+  const { result, periods, asOf, error } = useWidgetData(query, filters);
   if (error) return <p className="text-[12px] text-ink-muted">▲ {error}</p>;
-  const dx = config.dx?.[0];
+
   const data = new Map<string, MapDatum>();
   for (const row of result?.rows ?? []) {
-    if (row.dx !== dx || row.pe !== 'TOTAL') continue;
+    if (row.dx !== dx) continue;
+    if (!(row.pe === 'TOTAL' || periods.length === 1)) continue;
     const target =
       (targets ?? []).find(
         (t) => t.indicatorId === dx && t.orgUnitId === row.ou && t.kind === 'target',
