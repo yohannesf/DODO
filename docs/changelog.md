@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+Visual redesign — "Field Instrument" (look and feel only; data model, sync,
+routing, and business logic unchanged):
+
+- New cool blueprint-gray palette with a full dark theme, Archivo + IBM Plex
+  Mono type scale, and a single source-of-truth token file. Legacy token
+  aliases keep older screens reskinning without churn.
+- A core `Panel` frame (header strip + body + optional footer toolbar) wraps
+  every chart, map, table, KPI, and form section; toolbar actions reveal on
+  hover/focus and are keyboard reachable.
+- Persistent context bar with the signature `Sync Gauge` — live connectivity
+  plus outstanding offline work, with the one purposeful animation (a sync
+  pulse, disabled under `prefers-reduced-motion`).
+- Shared ECharts theme reads live CSS vars (adapts to light/dark) and pins
+  legends outside the plot; MapLibre style derives a geometry-only backdrop
+  with an indicator vs-target color ramp and a deliberate no-basemap state.
+- Compact table density is the default on data screens, with a per-device
+  toggle. New `/dev/styleguide` route renders every primitive, the Panel, and
+  the Sync Gauge in all states across both themes.
+- Quality floor: AA contrast, visible keyboard focus rings, reduced-motion
+  respected, and the app shell collapses to a mobile-friendly layout.
+
 UX overhaul round 1 (research: DevResults, DHIS2 entry app, ActivityInfo)
 plus the period entry-window gap found in review:
 
