@@ -21,6 +21,8 @@ import {
   Field,
   FieldGroup,
   Input,
+  Panel,
+  PanelIconButton,
   Select,
   Textarea,
   cx,
@@ -385,67 +387,60 @@ export function Dashboards() {
           onPointerUp={() => (drag.current = null)}
         >
           {liveItems.map((item) => (
-            <section
+            <div
               key={item.id}
-              className={cx(
-                'relative flex min-h-0 flex-col overflow-hidden border border-hairline bg-surface p-3',
-                editMode && 'border-cobalt border-dashed',
-              )}
+              className="relative min-h-0"
               style={{
                 gridColumn: `${item.gridX + 1} / span ${item.gridW}`,
                 gridRow: `${item.gridY + 1} / span ${item.gridH}`,
               }}
             >
-              <header
-                className={cx(
-                  'mb-1 flex items-center justify-between',
-                  editMode && 'cursor-move',
-                )}
-                onPointerDown={
+              <Panel
+                title={widgetTitle(item)}
+                className={cx('h-full', editMode && 'border-dashed border-primary')}
+                noFullscreen={editMode}
+                headerProps={
                   editMode
-                    ? (e) => {
-                        drag.current = {
-                          id: item.id,
-                          mode: 'move',
-                          startX: e.clientX,
-                          startY: e.clientY,
-                          orig: item,
-                        };
+                    ? {
+                        className: 'cursor-move',
+                        onPointerDown: (e) => {
+                          drag.current = {
+                            id: item.id,
+                            mode: 'move',
+                            startX: e.clientX,
+                            startY: e.clientY,
+                            orig: item,
+                          };
+                        },
                       }
                     : undefined
                 }
+                toolbar={
+                  editMode ? (
+                    <>
+                      <PanelIconButton
+                        label="Configure widget"
+                        onClick={() => setConfiguring(item)}
+                      >
+                        <span aria-hidden>⚙</span>
+                      </PanelIconButton>
+                      <PanelIconButton
+                        label="Remove widget"
+                        onClick={() =>
+                          setItems(liveItems.filter((i) => i.id !== item.id))
+                        }
+                      >
+                        <span aria-hidden>×</span>
+                      </PanelIconButton>
+                    </>
+                  ) : undefined
+                }
               >
-                <h2 className="small-caps font-medium text-ink-muted">
-                  {widgetTitle(item)}
-                </h2>
-                {editMode ? (
-                  <span className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setConfiguring(item)}
-                    >
-                      ⚙
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        const next = liveItems.filter((i) => i.id !== item.id);
-                        setItems(next);
-                      }}
-                    >
-                      ×
-                    </Button>
-                  </span>
-                ) : null}
-              </header>
-              <div className="min-h-0 grow">
                 <Widget item={item} filters={filters} />
-              </div>
+              </Panel>
               {editMode ? (
                 <span
-                  className="absolute right-0 bottom-0 h-4 w-4 cursor-nwse-resize border-t border-l border-cobalt"
+                  className="absolute right-0 bottom-0 h-4 w-4 cursor-nwse-resize border-t border-l border-primary"
                   onPointerDown={(e) => {
                     e.stopPropagation();
                     drag.current = {
@@ -458,7 +453,7 @@ export function Dashboards() {
                   }}
                 />
               ) : null}
-            </section>
+            </div>
           ))}
         </div>
       )}
