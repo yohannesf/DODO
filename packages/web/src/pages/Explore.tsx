@@ -18,6 +18,7 @@ import {
   THead,
   Tr,
 } from '../components';
+import { DensityToggle } from '../components';
 import { useEntityList } from '../api/metadata';
 import { fetchAnalytics, monthRange, type AnalyticsResult } from '../api/analytics';
 import { chartBaseOption, SERIES_DEFAULTS } from '../charts/theme';
@@ -196,7 +197,11 @@ export function Explore() {
           {result ? (
             <>
               <Chart result={result} periods={periods} kind={chartKind} />
-              <div className="mt-4 overflow-x-auto">
+              <div className="mt-4 mb-1.5 flex items-center justify-between">
+                <span className="type-label text-ink-muted">pivot</span>
+                <DensityToggle />
+              </div>
+              <div className="overflow-x-auto">
                 <Table data-testid="explore-pivot">
                   <THead>
                     <Tr>

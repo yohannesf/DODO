@@ -64,6 +64,15 @@
   --info: #5b9bd5;
 }
 
+/* table density (§4): compact is the default on data screens; a toggle flips
+   data-density to comfortable. Compact ≈ 32px row, comfortable ≈ 40px. */
+:root {
+  --row-py: 0.375rem;
+}
+:root[data-density='comfortable'] {
+  --row-py: 0.625rem;
+}
+
 @theme {
   /* surfaces */
   --color-canvas: var(--canvas);

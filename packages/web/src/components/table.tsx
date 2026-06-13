@@ -43,7 +43,7 @@ export function Th({
   return (
     <th
       className={cx(
-        'type-label border-b border-border-strong px-2 py-1.5 text-ink-muted',
+        'type-label border-b border-border-strong px-2 py-[var(--row-py)] text-ink-muted',
         numeric && 'text-right',
         className,
       )}
@@ -59,7 +59,11 @@ export function Td({
 }: TdHTMLAttributes<HTMLTableCellElement> & CellProps) {
   return (
     <td
-      className={cx('px-2 py-1.5', numeric && 'tnum text-right font-mono', className)}
+      className={cx(
+        'px-2 py-[var(--row-py)]',
+        numeric && 'tnum text-right font-mono',
+        className,
+      )}
       {...rest}
     />
   );
