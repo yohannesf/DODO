@@ -127,6 +127,9 @@ importers:
       '@dodo/shared':
         specifier: workspace:*
         version: link:../shared
+      '@fontsource/archivo':
+        specifier: ^5.2.8
+        version: 5.2.8
       '@radix-ui/react-dialog':
         specifier: ^1.1.14
         version: 1.1.16(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -1430,6 +1433,9 @@ packages:
 
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
+
+  '@fontsource/archivo@5.2.8':
+    resolution: {integrity: sha512-Fc4yuMt85MmcYooUVpYHAJRJTymPv2+J9HsMP2f5mxR/0pIWgE2V5XfgNTavPpklX2rJFprdT36iE6Rr8ds9MA==}
 
   '@fontsource/ibm-plex-mono@5.2.7':
     resolution: {integrity: sha512-MKAb8qV+CaiMQn2B0dIi1OV3565NYzp3WN5b4oT6LTkk+F0jR6j0ZN+5BKJiIhffDC3rtBULsYZE65+0018z9w==}
@@ -5980,6 +5986,8 @@ snapshots:
       react-dom: 19.2.7(react@19.2.7)
 
   '@floating-ui/utils@0.2.11': {}
+
+  '@fontsource/archivo@5.2.8': {}
 
   '@fontsource/ibm-plex-mono@5.2.7': {}
 

@@ -3,9 +3,13 @@
    framed panels, semantic colors for data meaning only. Light is primary;
    dark follows. Raw palette lives on :root / .dark; Tailwind @theme maps the
    color utilities to those vars so a single class set re-themes both modes. */
-@import '@fontsource/ibm-plex-sans/400.css';
-@import '@fontsource/ibm-plex-sans/500.css';
-@import '@fontsource/ibm-plex-sans/600.css';
+/* Archivo (display + UI) + IBM Plex Mono (data/tabular) — self-hosted, OFL-1.1,
+   bundled as build assets (not runtime deps). */
+@import '@fontsource/archivo/400.css';
+@import '@fontsource/archivo/500.css';
+@import '@fontsource/archivo/600.css';
+@import '@fontsource/archivo/700.css';
+@import '@fontsource/archivo/800.css';
 @import '@fontsource/ibm-plex-mono/400.css';
 @import '@fontsource/ibm-plex-mono/500.css';
 @import 'tailwindcss';
@@ -97,8 +101,8 @@
   --color-ontrack: var(--ok);
   --color-offtrack: var(--danger);
 
-  /* typography (Archivo wired in step 3) */
-  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  /* typography — Archivo for display/UI, Plex Mono for data/tabular */
+  --font-sans: 'Archivo', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
   /* shape: small instrument-bezel radii (4px workhorse) */
@@ -156,8 +160,45 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* §3 type scale */
+@utility type-display {
+  font-size: 2rem;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+@utility type-h1 {
+  font-size: 1.5rem;
+  line-height: 1.2;
+  font-weight: 700;
+}
+@utility type-h2 {
+  font-size: 1.125rem;
+  line-height: 1.3;
+  font-weight: 600;
+}
+@utility type-body {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  font-weight: 400;
+}
+@utility type-data {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 450;
+  font-variant-numeric: tabular-nums;
+}
+
+/* label / eyebrow / column header / status — §3 `label` */
+@utility type-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 @utility small-caps {
-  font-size: 11px;
-  letter-spacing: 0.08em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
