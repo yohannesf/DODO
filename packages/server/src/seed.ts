@@ -23,7 +23,43 @@ import {
   orgUnitLevel,
   program,
 } from './db/schema.js';
-import { createOrgUnit } from './services/metadata/org-units.js';
+import { createOrgUnit, updateOrgUnit } from './services/metadata/org-units.js';
+
+// Convex hull (Andrew's monotone chain) over a region's site coordinates,
+// buffered outward from the centroid, so each region renders as an
+// administrative-boundary polygon on the map (no external basemap needed).
+function hullPolygon(
+  points: Array<[number, number]>,
+  buffer = 0.18,
+): { type: 'Polygon'; coordinates: number[][][] } | null {
+  if (points.length < 3) return null;
+  const pts = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o: number[], a: number[], b: number[]) =>
+    (a[0]! - o[0]!) * (b[1]! - o[1]!) - (a[1]! - o[1]!) * (b[0]! - o[0]!);
+  const lower: number[][] = [];
+  for (const p of pts) {
+    while (lower.length >= 2 && cross(lower.at(-2)!, lower.at(-1)!, p) <= 0) lower.pop();
+    lower.push(p);
+  }
+  const upper: number[][] = [];
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const p = pts[i]!;
+    while (upper.length >= 2 && cross(upper.at(-2)!, upper.at(-1)!, p) <= 0) upper.pop();
+    upper.push(p);
+  }
+  const hull = [...lower.slice(0, -1), ...upper.slice(0, -1)];
+  if (hull.length < 3) return null;
+  const cx = hull.reduce((s, p) => s + p[0]!, 0) / hull.length;
+  const cy = hull.reduce((s, p) => s + p[1]!, 0) / hull.length;
+  const ring = hull.map(([x, y]) => {
+    const dx = x! - cx;
+    const dy = y! - cy;
+    const d = Math.hypot(dx, dy) || 1;
+    return [x! + (dx / d) * buffer, y! + (dy / d) * buffer];
+  });
+  ring.push(ring[0]!); // close the ring
+  return { type: 'Polygon', coordinates: [ring] };
+}
 import {
   createCategoryCombo,
   listOptionCombos,
@@ -84,6 +120,7 @@ export async function seedDemo(db: Db, adminUser: AuthUser): Promise<void> {
     [38.0, 9.0],
   ];
   const sites: Array<{ id: string }> = [];
+  const regionUnits: Array<{ id: string }> = [];
   for (let r = 0; r < 4; r++) {
     const region = await createOrgUnit(db, {
       name: `${regionNames[r]} Region`,
@@ -95,8 +132,14 @@ export async function seedDemo(db: Db, adminUser: AuthUser): Promise<void> {
       geometry: null,
       attributes: {},
     });
+    const regionCoords: Array<[number, number]> = [];
     for (let s = 1; s <= 9; s++) {
       const [lon, lat] = baseCoords[r]!;
+      const coord: [number, number] = [
+        lon + (rand() - 0.5) * 0.6,
+        lat + (rand() - 0.5) * 0.6,
+      ];
+      regionCoords.push(coord);
       sites.push(
         await createOrgUnit(db, {
           name: `${regionNames[r]} Site ${s}`,
@@ -105,14 +148,15 @@ export async function seedDemo(db: Db, adminUser: AuthUser): Promise<void> {
           parentId: region.id,
           openingDate: '2020-01-01',
           closedDate: null,
-          geometry: {
-            type: 'Point',
-            coordinates: [lon + (rand() - 0.5) * 0.6, lat + (rand() - 0.5) * 0.6],
-          },
+          geometry: { type: 'Point', coordinates: coord },
           attributes: {},
         }),
       );
     }
+    // give the region an administrative-boundary polygon around its sites
+    const poly = hullPolygon(regionCoords);
+    if (poly) await updateOrgUnit(db, region.id, { geometry: poly });
+    regionUnits.push(region);
   }
 
   // disaggregation: Sex × Age band
@@ -278,10 +322,25 @@ export async function seedDemo(db: Db, adminUser: AuthUser): Promise<void> {
       annualized: false,
       programId: null,
     });
-  await ind('Boreholes rehabilitated (total)', 'IND-BOREHOLES', '#{DE-BOREHOLES}', '1');
-  await ind('Functional water points', 'IND-WATERPOINTS', '#{DE-WATERPOINTS}', '1');
-  await ind('People with safe water', 'IND-PEOPLE-WATER', '#{DE-PEOPLE-WATER}', '1');
-  await ind(
+  const indBoreholes = await ind(
+    'Boreholes rehabilitated (total)',
+    'IND-BOREHOLES',
+    '#{DE-BOREHOLES}',
+    '1',
+  );
+  const indWaterPoints = await ind(
+    'Functional water points',
+    'IND-WATERPOINTS',
+    '#{DE-WATERPOINTS}',
+    '1',
+  );
+  const indPeopleWater = await ind(
+    'People with safe water',
+    'IND-PEOPLE-WATER',
+    '#{DE-PEOPLE-WATER}',
+    '1',
+  );
+  const indPctFemale = await ind(
     '% female (water)',
     'IND-PCT-F-WATER',
     '#{DE-PEOPLE-WATER.SEX-F}',
@@ -400,6 +459,124 @@ export async function seedDemo(db: Db, adminUser: AuthUser): Promise<void> {
     const bad = results.find((r) => r.status !== 'applied');
     if (bad) throw new Error(`seed push failed: ${JSON.stringify(bad)}`);
   }
+  // targets for the headline indicators at every region + site, derived from
+  // the actual annual value so the map shows a real green/amber/red spread
+  const { runAnalytics } = await import('./services/analytics.js');
+  const targets = makeCrud((await import('./db/schema.js')).target, 'target');
+  const thisYear = formatPeriod(periodContaining('YEARLY', new Date()));
+  const targetOus = [...regionUnits, ...sites].map((o) => o.id);
+  // achievement factors cycle to spread units across the legend buckets
+  const factors = [1.25, 1.08, 0.96, 0.82, 0.64, 1.15, 0.9, 0.72];
+  let fi = 0;
+  for (const ind of [indPeopleWater, indWaterPoints, indBoreholes]) {
+    const res = await runAnalytics(db, adminUser, {
+      dx: [ind.id as string],
+      ou: targetOus,
+      pe: [thisYear],
+      ouMode: 'subtree',
+      peTotal: false,
+    });
+    for (const row of res.rows) {
+      if (row.value === null || row.value <= 0) continue;
+      const factor = factors[fi++ % factors.length]!;
+      await targets.create(db, {
+        indicatorId: ind.id as string,
+        orgUnitId: row.ou,
+        period: thisYear,
+        value: Math.max(1, Math.round(row.value / factor)),
+        kind: 'target',
+      });
+    }
+  }
+
+  // an overview dashboard so a fresh install opens to something judgeable
+  const { createDashboard } = await import('./services/metadata/dashboards.js');
+  const widget = (
+    kind: 'kpi' | 'chart' | 'map' | 'table',
+    config: Record<string, unknown>,
+    grid: [number, number, number, number],
+  ) => ({
+    id: uuidv7(),
+    kind,
+    config: { ouIds: [country.id as string], ouMode: 'subtree', ...config },
+    gridX: grid[0],
+    gridY: grid[1],
+    gridW: grid[2],
+    gridH: grid[3],
+  });
+  await createDashboard(db, {
+    name: 'WASH overview',
+    code: 'DASH-WASH',
+    shared: true,
+    items: [
+      widget(
+        'kpi',
+        {
+          title: 'People with safe water (12m)',
+          dx: [indPeopleWater.id],
+          relativePeriod: 'LAST_12_MONTHS',
+        },
+        [0, 0, 4, 2],
+      ),
+      widget(
+        'kpi',
+        {
+          title: 'Functional water points',
+          dx: [indWaterPoints.id],
+          relativePeriod: 'THIS_MONTH',
+        },
+        [4, 0, 4, 2],
+      ),
+      widget(
+        'kpi',
+        {
+          title: 'Boreholes rehabilitated (12m)',
+          dx: [indBoreholes.id],
+          relativePeriod: 'LAST_12_MONTHS',
+        },
+        [8, 0, 4, 2],
+      ),
+      widget(
+        'chart',
+        {
+          title: 'People reached, monthly',
+          dx: [indPeopleWater.id],
+          relativePeriod: 'LAST_12_MONTHS',
+          chartKind: 'line',
+        },
+        [0, 2, 8, 4],
+      ),
+      widget(
+        'map',
+        {
+          title: 'Coverage by site',
+          dx: [indPeopleWater.id],
+          relativePeriod: 'THIS_MONTH',
+        },
+        [8, 2, 4, 4],
+      ),
+      widget(
+        'chart',
+        {
+          title: 'Boreholes by month',
+          dx: [indBoreholes.id],
+          relativePeriod: 'LAST_6_MONTHS',
+          chartKind: 'bar',
+        },
+        [0, 6, 6, 3],
+      ),
+      widget(
+        'table',
+        {
+          title: '% female of people reached',
+          dx: [indPctFemale.id],
+          relativePeriod: 'LAST_3_MONTHS',
+        },
+        [6, 6, 6, 3],
+      ),
+    ],
+  });
+
   console.log(
     `seeded: ${sites.length + 5} org units, 6 data elements, 12 indicators, ${ops.length} values across ${periods.length} months`,
   );
