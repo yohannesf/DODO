@@ -75,7 +75,7 @@ export function KpiWidget({
   return (
     <div>
       <p className="tnum text-4xl font-semibold" style={{ color }}>
-        {value ?? '—'}
+        {value === null ? '—' : value.toLocaleString('en-US')}
       </p>
       {target !== null ? (
         <p className="text-[12px] text-ink-muted">
