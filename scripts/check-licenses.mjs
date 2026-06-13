@@ -13,11 +13,14 @@ const ALLOWED = new Set([
 ]);
 
 // Documented exceptions (flagged deviation from the policy's literal list).
-// Both are OSI-approved, permissive, non-copyleft licenses pulled in
-// transitively by the spec-mandated stack and cannot be avoided:
+// All are OSI/FSF-approved, permissive, non-copyleft licenses pulled in by the
+// spec-mandated stack and cannot be avoided:
 //   Unlicense      isbot ← @tanstack/react-router (spec §2.3 router choice)
 //   BlueOak-1.0.0  glob@11 family ← @fastify/static, workbox-build
-const EXCEPTIONS = new Set(['Unlicense', 'BlueOak-1.0.0']);
+//   OFL-1.1        the self-hosted @fontsource webfonts (Archivo, IBM Plex);
+//                  the SIL Open Font License is the standard font licence and
+//                  imposes no terms on the application that bundles the fonts.
+const EXCEPTIONS = new Set(['Unlicense', 'BlueOak-1.0.0', 'OFL-1.1']);
 for (const e of EXCEPTIONS) ALLOWED.add(e);
 
 // Packages whose manifest omits the license field but whose licensing is
