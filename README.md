@@ -23,14 +23,39 @@ forms, validation, approvals, dashboards, and maps — through the UI.
   Single-VM friendly, `pg_dump` backups, configuration shared as one
   `metadata.json` bundle.
 
-![Explore](docs/screenshots/explore.png)
+## What you get
+
+- **Spreadsheet-style data entry.** Visible, keyboard-navigable cells with
+  per-cell save/sync/warning/error/conflict states, automatic disaggregation
+  totals, per-section completeness, and a "mark complete" flow that runs
+  every validation rule. Values save to the device instantly — there is no
+  save button.
+- **Validation that actually validates.** Value-type and option-set checks,
+  expression-based validation rules (run offline at entry and again on the
+  server), and **period entry windows** — closed and future periods cannot
+  be entered from the UI and are re-rejected on sync (a dataset's frequency,
+  `open future periods`, and `expiry days` define the window).
+- **Dashboards & analytics.** A drag-resize dashboard grid with KPI, chart,
+  map, pivot, and text widgets, an ad-hoc Explore pivot/chart builder, and
+  relative periods ("this year", "last 12 months") that aggregate the
+  underlying monthly data correctly. Last-fetched results are cached so
+  dashboards render offline with a "data as of" stamp.
+- **Thematic maps.** MapLibre choropleth of org-unit boundaries and facility
+  points coloured against target thresholds (≥100% / 70–99% / <70%), fully
+  offline from the on-device mirror, with optional self-hosted PMTiles
+  basemaps.
+
+![Dashboard](docs/screenshots/dashboard.png)
 ![Maps](docs/screenshots/maps.png)
+![Explore](docs/screenshots/explore.png)
 
 ## Quick start
 
 ```sh
 docker compose up --build -d         # server + postgres/postgis + caddy on :8080
-pnpm --filter @dodo/server seed      # optional: WASH demo with 18 months of data
+pnpm --filter @dodo/server seed      # optional: WASH demo — 40 org units with
+                                     # geometry, 12 indicators, 18 months of data,
+                                     # targets, and a ready-made overview dashboard
 ```
 
 Sign in as `admin` / `admin` (change it immediately). See the

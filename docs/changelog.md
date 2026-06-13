@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased
+
+UX overhaul round 1 (research: DevResults, DHIS2 entry app, ActivityInfo)
+plus the period entry-window gap found in review:
+
+- Entry cells render as visible bordered inputs with hover/focus states and
+  whole-cell validation colors; disaggregated rows get automatic totals;
+  the dataset/org unit/period selector is a distinct toolbar.
+- Period entry windows (spec §7.3, previously missing): a shared
+  `periodOpenStatus` rule — frequency match, `openFuturePeriods`,
+  `expiryDays` — drives a bounded period stepper in the entry UI (future
+  periods cannot be selected) and is re-enforced on sync push (future,
+  expired, wrong-frequency, and dataset-less values are rejected).
+- Explore: scrollable single-row chart legend (no more plot overlap),
+  pivot rows grouped by indicator, thousand separators; same legend fix in
+  dashboard chart widgets; KPI values get separators too.
+- Analytics period containment: a coarse relative period (e.g. "this year")
+  now aggregates the finer stored data it contains instead of string-matching
+  it, so "this year" over monthly data works. Stock/flow semantics are kept
+  per real period (a stock still takes the latest month, not the year as one
+  bucket).
+- Maps now render an administrative-boundary choropleth: regions carry
+  polygon geometry (a buffered convex hull over their sites in the demo
+  seed) coloured by aggregate-vs-target, with facility points on top — no
+  external basemap required. MapView is created once and updated via
+  `setData` (previously it was recreated on every data change, which raced
+  MapLibre's async load and blanked the canvas); added a `ResizeObserver` so
+  the canvas tracks its container.
+- Demo seed now creates a ready-made "WASH overview" dashboard (3 KPIs,
+  trend line, coverage map, monthly bars, % female pivot) and seeds targets
+  for the headline indicators so the map shows a real green/amber/red spread.
+
 ## M7 — Polish & release — v0.1.0 (2026-06-12)
 
 First tagged release. All seven milestones complete with their spec §12
