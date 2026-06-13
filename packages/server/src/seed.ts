@@ -523,7 +523,7 @@ export async function seedDemo(db: Db, adminUser: AuthUser): Promise<void> {
         {
           title: 'Functional water points',
           dx: [indWaterPoints.id],
-          relativePeriod: 'THIS_MONTH',
+          relativePeriod: 'LAST_MONTH',
         },
         [4, 0, 4, 2],
       ),
@@ -551,7 +551,7 @@ export async function seedDemo(db: Db, adminUser: AuthUser): Promise<void> {
         {
           title: 'Coverage by site',
           dx: [indPeopleWater.id],
-          relativePeriod: 'THIS_MONTH',
+          relativePeriod: 'LAST_MONTH',
         },
         [8, 2, 4, 4],
       ),
