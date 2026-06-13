@@ -253,6 +253,22 @@ describe('analytics aggregation', () => {
     expect(cell(res, deStockId, countryId, 'TOTAL')).toBe(21);
   });
 
+  it('aggregates monthly data under a coarser yearly period', async () => {
+    // a yearly period must contain the monthly values, not string-match them
+    const res = await api(
+      'GET',
+      `/api/analytics?dx=${deFlowId}&ou=${countryId}&pe=2026&ouMode=subtree&peTotal=1`,
+    );
+    // flow: Jan(5) + Feb(4) summed across both months = 9
+    expect(cell(res, deFlowId, countryId, '2026')).toBe(9);
+    // stock under the year takes the latest real month (Feb = 21), not a sum
+    const stock = await api(
+      'GET',
+      `/api/analytics?dx=${deStockId}&ou=${countryId}&pe=2026&ouMode=subtree&peTotal=1`,
+    );
+    expect(cell(stock, deStockId, countryId, '2026')).toBe(21);
+  });
+
   it('keeps selected mode to the unit itself', async () => {
     const res = await api(
       'GET',

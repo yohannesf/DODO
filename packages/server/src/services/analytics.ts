@@ -7,6 +7,9 @@ import {
   collectRefs,
   evaluateExpression,
   parseExpression,
+  parsePeriod,
+  periodEndExclusive,
+  periodStartDate,
   type AggregationOp,
   type AuthUser,
   type ExprNode,
@@ -184,7 +187,10 @@ export async function runAnalytics(
     groupMembers.set(root.id, new Set(members.map((m) => m.id)));
   }
 
-  // load all candidate value rows once
+  // load all candidate value rows once. We do NOT filter by exact period in
+  // SQL: a requested period may be coarser than the stored data (e.g. a
+  // yearly "2026" over monthly values), so matching is by date containment
+  // below, not string equality. v1 computes on the fly (spec §4.5).
   const values: ValueRow[] = allDes.size
     ? await db
         .select({
@@ -195,13 +201,33 @@ export async function runAnalytics(
           value: dataValue.value,
         })
         .from(dataValue)
-        .where(
-          and(
-            inArray(dataValue.dataElementId, [...allDes.keys()]),
-            inArray(dataValue.period, query.pe),
-          ),
-        )
+        .where(inArray(dataValue.dataElementId, [...allDes.keys()]))
     : [];
+
+  // Expand each requested period to the actual stored periods it contains, so
+  // stock/flow semantics stay per-real-period (a stock takes the last MONTH,
+  // not "the year" as one bucket). Same-granularity requests are unchanged.
+  const distinctValuePeriods = [...new Set(values.map((v) => v.period))];
+  const containmentCache = new Map<string, string[]>();
+  const actualPeriodsWithin = (requested: string): string[] => {
+    const cached = containmentCache.get(requested);
+    if (cached) return cached;
+    const req = parsePeriod(requested);
+    if (!req) {
+      containmentCache.set(requested, []);
+      return [];
+    }
+    const start = periodStartDate(req).getTime();
+    const end = periodEndExclusive(req).getTime();
+    const matches = distinctValuePeriods.filter((vp) => {
+      const parsed = parsePeriod(vp);
+      if (!parsed) return false;
+      const t = periodStartDate(parsed).getTime();
+      return t >= start && t < end;
+    });
+    containmentCache.set(requested, matches);
+    return matches;
+  };
 
   // coc → option ids for #{DE.OPTION} narrowing
   const cocs = await db
@@ -225,7 +251,11 @@ export async function runAnalytics(
     const optionId = optionCode ? optionByCode.get(optionCode) : null;
     if (optionCode && !optionId) return null;
     const perPeriod: Array<{ period: string; value: number }> = [];
-    for (const pe of periods) {
+    // each requested period → the real stored periods it contains; aggregate
+    // across org units within each real period (stage 1)
+    const realPeriods = new Set<string>();
+    for (const pe of periods) for (const a of actualPeriodsWithin(pe)) realPeriods.add(a);
+    for (const pe of realPeriods) {
       const nums = values
         .filter(
           (v) =>
@@ -239,6 +269,7 @@ export async function runAnalytics(
       const agg = aggregateAcrossOrgUnits(de.aggregationOp, nums);
       if (agg !== null) perPeriod.push({ period: pe, value: agg });
     }
+    // stage 2: across real periods — sum for flows, last for stocks
     return aggregateAcrossPeriods(de.aggregationOp, perPeriod);
   }
 
