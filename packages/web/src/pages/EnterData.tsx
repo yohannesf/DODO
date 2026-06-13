@@ -369,7 +369,7 @@ export function EnterData() {
 
   if (!model.datasets || model.datasets.length === 0) {
     return (
-      <Page number="01" title="Enter Data">
+      <Page title="Enter Data">
         <p data-testid="enter-data-empty">
           Nothing to enter yet. Either no datasets are assigned to your org units, or the
           first sync has not completed — check the sync chip above.
@@ -381,7 +381,7 @@ export function EnterData() {
   let rowCounter = -1;
 
   return (
-    <Page number="01" title="Enter Data">
+    <Page title="Enter Data">
       {/* context toolbar — the DHIS2-style "what am I entering" zone */}
       <div className="grid max-w-4xl grid-cols-3 gap-4 border border-hairline bg-surface p-3">
         <Field label="Dataset">

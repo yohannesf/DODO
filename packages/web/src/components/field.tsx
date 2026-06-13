@@ -15,7 +15,7 @@ export function Field({ label, hint, error, children, className }: FieldProps) {
       <span className="small-caps mb-1 block font-medium text-ink-muted">{label}</span>
       {children}
       {error ? (
-        <span className="mt-1 block text-[12px] text-offtrack">{error}</span>
+        <span className="mt-1 block text-[12px] text-danger">{error}</span>
       ) : hint ? (
         <span className="mt-1 block text-[12px] text-ink-muted">{hint}</span>
       ) : null}
@@ -33,7 +33,7 @@ export function FieldGroup({ label, hint, error, children, className }: FieldPro
       <span className="small-caps mb-1 block font-medium text-ink-muted">{label}</span>
       {children}
       {error ? (
-        <span className="mt-1 block text-[12px] text-offtrack">{error}</span>
+        <span className="mt-1 block text-[12px] text-danger">{error}</span>
       ) : hint ? (
         <span className="mt-1 block text-[12px] text-ink-muted">{hint}</span>
       ) : null}

@@ -1,19 +1,24 @@
-// Dense, keyboard-first tables (design language): sticky header, hairline
-// rules, zebra OFF, right-aligned tabular numerals via `numeric`.
+// Dense, keyboard-first tables (design language §6): sticky header on
+// --sunken, label-caps column headers, 1px row rules, right-aligned mono
+// numerals, row hover --primary-tint (low alpha), zebra OFF.
 import type { HTMLAttributes, TdHTMLAttributes, ThHTMLAttributes } from 'react';
 import { cx } from './cx';
 
 export function Table({ className, ...rest }: HTMLAttributes<HTMLTableElement>) {
   return (
     <table
-      className={cx('w-full border-collapse text-left text-sm', className)}
+      className={cx(
+        'w-full border-collapse text-left text-sm',
+        '[&_tbody_tr:hover]:bg-primary-tint/50',
+        className,
+      )}
       {...rest}
     />
   );
 }
 
 export function THead({ className, ...rest }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <thead className={cx('sticky top-0 bg-paper', className)} {...rest} />;
+  return <thead className={cx('sticky top-0 bg-sunken', className)} {...rest} />;
 }
 
 export function TBody(props: HTMLAttributes<HTMLTableSectionElement>) {
@@ -22,10 +27,7 @@ export function TBody(props: HTMLAttributes<HTMLTableSectionElement>) {
 
 export function Tr({ className, ...rest }: HTMLAttributes<HTMLTableRowElement>) {
   return (
-    <tr
-      className={cx('border-b border-hairline transition-colors', className)}
-      {...rest}
-    />
+    <tr className={cx('border-b border-border transition-colors', className)} {...rest} />
   );
 }
 
@@ -41,7 +43,7 @@ export function Th({
   return (
     <th
       className={cx(
-        'small-caps border-b border-ink px-2 py-1.5 font-medium text-ink-muted',
+        'type-label border-b border-border-strong px-2 py-1.5 text-ink-muted',
         numeric && 'text-right',
         className,
       )}
@@ -57,7 +59,7 @@ export function Td({
 }: TdHTMLAttributes<HTMLTableCellElement> & CellProps) {
   return (
     <td
-      className={cx('px-2 py-1.5', numeric && 'tnum text-right', className)}
+      className={cx('px-2 py-1.5', numeric && 'tnum text-right font-mono', className)}
       {...rest}
     />
   );

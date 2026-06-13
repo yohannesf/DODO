@@ -11,9 +11,9 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
     <textarea
       ref={ref}
       className={cx(
-        'w-full rounded-xs border border-hairline bg-surface px-2.5 py-1.5 font-mono text-[13px] text-ink',
-        'placeholder:text-ink-muted',
-        'focus:border-cobalt focus:ring-1 focus:ring-cobalt focus:outline-none',
+        'w-full rounded-sm border border-border bg-panel px-2.5 py-1.5 font-mono text-[13px] text-ink',
+        'placeholder:text-ink-faint',
+        'focus:border-primary focus:ring-2 focus:ring-primary/45 focus:outline-none',
         className,
       )}
       {...rest}

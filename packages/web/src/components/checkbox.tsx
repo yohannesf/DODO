@@ -16,7 +16,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
         className,
       )}
     >
-      <input ref={ref} type="checkbox" className="accent-cobalt" {...rest} />
+      <input ref={ref} type="checkbox" className="accent-primary" {...rest} />
       {label}
     </label>
   );

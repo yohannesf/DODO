@@ -141,7 +141,7 @@ export function Explore() {
   const cols = [...periods, 'TOTAL'];
 
   return (
-    <Page number="05" title="Explore">
+    <Page title="Explore">
       <div className="grid max-w-5xl grid-cols-[260px_1fr] gap-8">
         <aside className="space-y-4 text-sm">
           <FieldGroup label={`data (${dx.length})`}>

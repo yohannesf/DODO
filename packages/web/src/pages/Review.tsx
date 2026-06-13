@@ -71,7 +71,7 @@ export function Review() {
   });
 
   return (
-    <Page number="02" title="Review & Approve">
+    <Page title="Review & Approve">
       {pending.data?.length === 0 ? (
         <p className="text-sm text-ink-muted" data-testid="review-empty">
           Nothing waiting for approval. Completed submissions from datasets that require

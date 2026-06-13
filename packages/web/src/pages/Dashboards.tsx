@@ -267,7 +267,7 @@ export function Dashboards() {
   }
 
   return (
-    <Page number="03" title="Dashboards">
+    <Page title="Dashboards">
       <div className="mb-4 flex max-w-5xl flex-wrap items-end gap-3">
         <Field label="Dashboard">
           <Select

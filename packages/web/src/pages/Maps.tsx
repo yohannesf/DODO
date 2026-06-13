@@ -86,7 +86,7 @@ export function Maps() {
   ];
 
   return (
-    <Page number="04" title="Maps">
+    <Page title="Maps">
       <div className="mb-3 flex max-w-4xl items-end gap-3">
         <Field label="Indicator / data element" className="w-72">
           <Select value={dxId} onChange={(e) => setDxId(e.target.value)}>

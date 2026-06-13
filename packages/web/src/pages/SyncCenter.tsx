@@ -119,7 +119,7 @@ export function SyncCenter() {
   );
 
   return (
-    <Page number="08" title="Sync Center">
+    <Page title="Sync Center">
       <div className="flex items-center gap-4">
         <span className="small-caps" data-testid="sync-status">
           state: {status}

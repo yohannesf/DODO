@@ -38,6 +38,38 @@ function widgetQuery(config: WidgetConfig): WidgetQuery | null {
   };
 }
 
+// real inline sparkline (§6): 1px --primary line + single end dot
+function Sparkline({ values }: { values: number[] }) {
+  if (values.length < 2) return null;
+  const w = 104;
+  const h = 26;
+  const pad = 3;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const pts = values.map((v, i) => {
+    const x = pad + (i / (values.length - 1)) * (w - 2 * pad);
+    const y = h - pad - ((v - min) / span) * (h - 2 * pad);
+    return [x, y] as const;
+  });
+  const d = pts
+    .map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`)
+    .join(' ');
+  const last = pts[pts.length - 1]!;
+  return (
+    <svg
+      width={w}
+      height={h}
+      viewBox={`0 0 ${w} ${h}`}
+      aria-hidden
+      className="mt-1.5 block overflow-visible"
+    >
+      <path d={d} fill="none" stroke="var(--primary)" strokeWidth="1" />
+      <circle cx={last[0]} cy={last[1]} r="2" fill="var(--primary)" />
+    </svg>
+  );
+}
+
 export function KpiWidget({
   config,
   filters,
@@ -62,32 +94,28 @@ export function KpiWidget({
       (t) => t.indicatorId === dx && t.orgUnitId === ou && t.kind === 'target',
     )?.value ?? null;
   const value = total?.value ?? null;
-  const color = value !== null ? achievementColor(value, target) : '#6F6A5E';
-
-  // text sparkline: braille-ish bars from the period series
-  const sparkValues = series.map((s) => s.value ?? 0);
-  const max = Math.max(...sparkValues, 1);
-  const bars = '▁▂▃▄▅▆▇█';
-  const sparkline = sparkValues
-    .map((v) => bars[Math.min(7, Math.floor((v / max) * 7.99))])
-    .join('');
+  const color = value !== null ? achievementColor(value, target) : 'var(--ink-faint)';
+  const pct = value !== null && target ? Math.round((value / target) * 100) : null;
 
   return (
     <div>
-      <p className="tnum text-4xl font-semibold" style={{ color }}>
+      <p className="type-display tnum" style={{ color }}>
         {value === null ? '—' : value.toLocaleString('en-US')}
       </p>
-      {target !== null ? (
-        <p className="text-[12px] text-ink-muted">
-          target <span className="tnum">{target}</span>
-          {value !== null ? (
-            <span className="tnum"> · {Math.round((value / target) * 100)}%</span>
-          ) : null}
-        </p>
-      ) : null}
-      <p className="tnum mt-1 text-cobalt" aria-hidden>
-        {sparkline}
-      </p>
+      {pct !== null ? (
+        <span
+          className="type-label mt-1 inline-flex items-center gap-1 rounded-xs px-1.5 py-0.5"
+          style={{
+            color,
+            backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)`,
+          }}
+        >
+          {pct >= 100 ? '▲' : '▼'} {pct}% of target
+        </span>
+      ) : (
+        <span className="type-label text-ink-faint">no target</span>
+      )}
+      <Sparkline values={series.map((s) => s.value ?? 0)} />
       <Stamp asOf={asOf} />
     </div>
   );

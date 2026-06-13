@@ -240,7 +240,7 @@ export function Framework() {
   const indicatorById = (id: string) => indicators.data?.find((i) => i.id === id);
 
   return (
-    <Page number="06" title="Framework">
+    <Page title="Framework">
       <div className="mb-4 flex items-end gap-3">
         <Field label="Results framework">
           <Select
