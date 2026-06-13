@@ -30,6 +30,30 @@ export interface MapDatum {
 
 let protocolRegistered = false;
 
+type FeatureCollection = { features: Array<{ geometry: unknown }> };
+
+/** Fit the map to a feature collection's bounds (spec §8.7: scoped bbox). */
+function fitTo(map: maplibregl.Map, fc: FeatureCollection): void {
+  if (fc.features.length === 0) return;
+  const bounds = new maplibregl.LngLatBounds();
+  const extend = (coords: unknown): void => {
+    if (
+      Array.isArray(coords) &&
+      coords.length >= 2 &&
+      typeof coords[0] === 'number' &&
+      typeof coords[1] === 'number'
+    ) {
+      bounds.extend([coords[0], coords[1]] as [number, number]);
+    } else if (Array.isArray(coords)) {
+      for (const c of coords) extend(c);
+    }
+  };
+  for (const f of fc.features) {
+    extend((f.geometry as { coordinates: unknown } | null)?.coordinates);
+  }
+  if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 48, maxZoom: 10 });
+}
+
 export function MapView({
   data,
   heightClass = 'h-[480px]',
@@ -73,6 +97,14 @@ export function MapView({
     return { type: 'FeatureCollection' as const, features };
   }, [orgUnits, data]);
 
+  // latest geojson available to the (basemap-scoped) create-once effect
+  const geojsonRef = useRef(geojson);
+  geojsonRef.current = geojson;
+  const loadedRef = useRef(false);
+
+  // Create the map once per basemap; data updates flow through setData below.
+  // (Recreating the map on every data change races MapLibre's async load and
+  // leaves a blank canvas.)
   useEffect(() => {
     if (!container.current) return;
     if (!protocolRegistered) {
@@ -137,13 +169,13 @@ export function MapView({
           }
         }
 
-        map.addSource('orgunits', { type: 'geojson', data: geojson });
+        map.addSource('orgunits', { type: 'geojson', data: geojsonRef.current });
         map.addLayer({
           id: 'ou-fill',
           type: 'fill',
           source: 'orgunits',
           filter: ['==', ['geometry-type'], 'Polygon'],
-          paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.55 },
+          paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.5 },
         });
         map.addLayer({
           id: 'ou-line',
@@ -165,26 +197,11 @@ export function MapView({
           },
         });
 
-        // fit to the scoped data (spec §8.7: scoped bbox)
-        if (geojson.features.length > 0) {
-          const bounds = new maplibregl.LngLatBounds();
-          const extend = (coords: unknown): void => {
-            if (
-              Array.isArray(coords) &&
-              coords.length >= 2 &&
-              typeof coords[0] === 'number' &&
-              typeof coords[1] === 'number'
-            ) {
-              bounds.extend([coords[0], coords[1]] as [number, number]);
-            } else if (Array.isArray(coords)) {
-              for (const c of coords) extend(c);
-            }
-          };
-          for (const f of geojson.features) {
-            extend((f.geometry as { coordinates: unknown }).coordinates);
-          }
-          if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 48, maxZoom: 10 });
-        }
+        loadedRef.current = true;
+        // resize first: the container may have laid out after map creation, so
+        // fitBounds needs the true canvas size to compute the right zoom
+        map.resize();
+        fitTo(map, geojsonRef.current);
 
         const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false });
         for (const layer of ['ou-points', 'ou-fill']) {
@@ -206,11 +223,33 @@ export function MapView({
       })();
     });
 
+    // MapLibre does not auto-resize — keep the canvas matched to its container
+    const ro = new ResizeObserver(() => map.resize());
+    ro.observe(container.current);
+
     return () => {
+      ro.disconnect();
+      loadedRef.current = false;
       map.remove();
       mapRef.current = null;
     };
-  }, [geojson, basemapUrl]);
+  }, [basemapUrl]);
+
+  // Push new colours/geometry into the existing map without recreating it.
+  // If the data arrives before the style finishes loading, apply on load.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = (): boolean => {
+      const src = map.getSource('orgunits') as maplibregl.GeoJSONSource | undefined;
+      if (!src) return false;
+      src.setData(geojson as never);
+      map.resize();
+      fitTo(map, geojson);
+      return true;
+    };
+    if (!apply()) map.once('load', apply);
+  }, [geojson]);
 
   async function downloadBasemap() {
     if (!basemapUrl) return;
