@@ -6,6 +6,7 @@ import {
   type BrowserContext,
   type Page,
 } from '@playwright/test';
+import { pickOrgUnit } from './helpers';
 
 // M3 acceptance — spec §10 offline e2e #2: two clients edit the same value
 // offline → first sync wins → second gets the conflict UI → resolved in both
@@ -87,7 +88,7 @@ async function openClient(browser: Browser): Promise<{
     timeout: 20_000,
   });
   await page.getByLabel('Dataset').selectOption({ label: datasetName });
-  await page.getByLabel('Org unit').selectOption({ label: 'Conflict Site' });
+  await pickOrgUnit(page, 'Conflict Site');
   // current month — future periods are no longer enterable (spec §7.3)
   await page.getByLabel('Period', { exact: true }).selectOption(THIS_MONTH);
   await expect(page.getByTestId('entry-form')).toBeVisible();

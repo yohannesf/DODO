@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { waitForServiceWorker } from './helpers';
+import { pickOrgUnit, waitForServiceWorker } from './helpers';
 
 // M2 acceptance — spec §10 offline e2e #1 and #3:
 //  #1 login → initial sync → offline → enter 50 values across 2 datasets →
@@ -104,7 +104,7 @@ async function waitSynced(page: Page) {
 
 async function selectContext(page: Page, datasetName: string, period: string) {
   await page.getByLabel('Dataset').selectOption({ label: datasetName });
-  await page.getByLabel('Org unit').selectOption({ label: 'Sync Test Site' });
+  await pickOrgUnit(page, 'Sync Test Site');
   // the period picker only offers open periods (spec §7.3)
   await page.getByLabel('Period', { exact: true }).selectOption(period);
   await expect(page.getByTestId('entry-form')).toBeVisible();

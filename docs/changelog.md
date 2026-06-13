@@ -8,6 +8,10 @@ plus the period entry-window gap found in review:
 - Entry cells render as visible bordered inputs with hover/focus states and
   whole-cell validation colors; disaggregated rows get automatic totals;
   the dataset/org unit/period selector is a distinct toolbar.
+- Org units are now chosen through a searchable tree popover
+  (`OrgUnitSelect`, on Radix Popover) instead of a flat indented `<select>`
+  that was unusable for a 40-unit hierarchy — wired into Enter Data, Users
+  (scope), Framework (targets), and the indicator test-evaluate.
 - Period entry windows (spec §7.3, previously missing): a shared
   `periodOpenStatus` rule — frequency match, `openFuturePeriods`,
   `expiryDays` — drives a bounded period stepper in the entry UI (future

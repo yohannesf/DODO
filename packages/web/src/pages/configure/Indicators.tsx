@@ -13,6 +13,7 @@ import {
   DialogContent,
   Field,
   Input,
+  OrgUnitSelect,
   Select,
   TBody,
   Table,
@@ -107,15 +108,13 @@ function TestEvaluate({
       <p className="small-caps mb-2 text-ink-muted">test evaluation</p>
       <div className="flex items-end gap-2">
         <Field label="Org unit (subtree)" className="grow">
-          <Select value={ou} onChange={(e) => setOu(e.target.value)}>
-            <option value="">choose…</option>
-            {orgUnits.data?.map((o) => (
-              <option key={o.id} value={o.id}>
-                {' '.repeat((o.level - 1) * 2)}
-                {o.name}
-              </option>
-            ))}
-          </Select>
+          <OrgUnitSelect
+            label="Org unit"
+            orgUnits={orgUnits.data ?? []}
+            value={ou || null}
+            placeholder="choose…"
+            onChange={(id) => setOu(id)}
+          />
         </Field>
         <Field label="Period">
           <Input

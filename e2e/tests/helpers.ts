@@ -1,4 +1,20 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
+
+/**
+ * Pick an org unit from the searchable OrgUnitSelect popover (the trigger is
+ * a button with aria-label "Org unit", not a native <select>).
+ */
+export async function pickOrgUnit(
+  page: Page,
+  name: string,
+  triggerLabel = 'Org unit',
+): Promise<void> {
+  await page.getByRole('button', { name: triggerLabel, exact: true }).click();
+  await page.getByRole('option', { name, exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: triggerLabel, exact: true }),
+  ).toContainText(name);
+}
 
 /**
  * Wait until the service worker controls the page. Required before

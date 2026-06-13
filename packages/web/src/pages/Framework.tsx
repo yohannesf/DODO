@@ -10,6 +10,7 @@ import {
   DialogContent,
   Field,
   Input,
+  OrgUnitSelect,
   Select,
   cx,
 } from '../components';
@@ -157,18 +158,14 @@ function TargetsEditor({ indicator }: { indicator: Indicator }) {
           <option value="target">target</option>
           <option value="baseline">baseline</option>
         </Select>
-        <Select
-          value={form.orgUnitId}
-          onChange={(e) => setForm({ ...form, orgUnitId: e.target.value })}
-        >
-          <option value="">org unit…</option>
-          {orgUnits.data?.map((o) => (
-            <option key={o.id} value={o.id}>
-              {' '.repeat((o.level - 1) * 2)}
-              {o.name}
-            </option>
-          ))}
-        </Select>
+        <OrgUnitSelect
+          label="Target org unit"
+          className="w-44"
+          orgUnits={orgUnits.data ?? []}
+          value={form.orgUnitId || null}
+          placeholder="org unit…"
+          onChange={(id) => setForm({ ...form, orgUnitId: id })}
+        />
         <Input
           placeholder="2026"
           value={form.period}

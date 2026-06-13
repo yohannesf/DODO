@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { pickOrgUnit } from './helpers';
 
 // M4 UI path: indicator builder with test-evaluate, Explore pivot/chart,
 // results framework with a target. Self-contained fixtures.
@@ -87,7 +88,7 @@ test('build indicator with live test-evaluate', async ({ page }) => {
   await dialog.getByLabel(/^Numerator/).fill('#{ZZ3-DE}');
 
   // live test evaluation against real data (10 every month at the site)
-  await dialog.getByLabel('Org unit (subtree)').selectOption({ label: 'ZZ3 Site' });
+  await pickOrgUnit(page, 'ZZ3 Site');
   await dialog.getByLabel('Period').fill('2026-01');
   await dialog.getByRole('button', { name: 'Evaluate' }).click();
   await expect(dialog.getByTestId('test-evaluate-result')).toContainText('= 10');
@@ -140,9 +141,7 @@ test('framework tree with linked indicator and target', async ({ page }) => {
 
   // target on the linked indicator
   await page.getByRole('button', { name: '◆ ZZ3 monthly total' }).first().click();
-  await page.getByRole('combobox').filter({ hasText: 'org unit…' }).selectOption({
-    label: 'ZZ3 Site',
-  });
+  await pickOrgUnit(page, 'ZZ3 Site', 'Target org unit');
   await page.getByPlaceholder('value').fill('120');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(page.getByText('● target')).toBeVisible();

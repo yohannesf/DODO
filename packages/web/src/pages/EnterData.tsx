@@ -18,7 +18,6 @@ import {
   type CategoryOptionCombo,
   type DataElement,
   type Dataset,
-  type OrgUnit,
   type RuleResult,
   type ValidationRule,
 } from '@dodo/shared';
@@ -29,6 +28,7 @@ import {
   DialogContent,
   Field,
   Input,
+  OrgUnitSelect,
   Select,
   Textarea,
   cx,
@@ -401,24 +401,18 @@ export function EnterData() {
           </Select>
         </Field>
         <Field label="Org unit">
-          <Select
-            value={orgUnitId}
-            onChange={(e) => {
-              setOrgUnitId(e.target.value);
-              persist('orgUnit', e.target.value);
-            }}
+          <OrgUnitSelect
+            label="Org unit"
+            orgUnits={model.orgUnits ?? []}
+            value={orgUnitId || null}
+            filter={(o) => dataset?.orgUnitIds.includes(o.id) ?? false}
             disabled={!dataset}
-          >
-            <option value="">choose…</option>
-            {(model.orgUnits ?? [])
-              .filter((o: OrgUnit) => dataset?.orgUnitIds.includes(o.id))
-              .map((o) => (
-                <option key={o.id} value={o.id}>
-                  {' '.repeat((o.level - 1) * 2)}
-                  {o.name}
-                </option>
-              ))}
-          </Select>
+            placeholder="choose…"
+            onChange={(id) => {
+              setOrgUnitId(id);
+              persist('orgUnit', id);
+            }}
+          />
         </Field>
         <Field label={`Period (${dataset?.frequency.toLowerCase() ?? '—'})`}>
           {/* only open periods are offered — closed/future entry is

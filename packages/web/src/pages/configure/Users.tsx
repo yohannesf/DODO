@@ -15,6 +15,7 @@ import {
   Field,
   FieldGroup,
   Input,
+  OrgUnitSelect,
   Select,
   TBody,
   Table,
@@ -109,23 +110,17 @@ function UserForm({ user, onDone }: { user: User | null; onDone: () => void }) {
         <div className="space-y-1">
           {scopes.map((s, idx) => (
             <div key={idx} className="flex items-center gap-2">
-              <Select
+              <OrgUnitSelect
+                label="Scope org unit"
+                className="flex-1"
+                orgUnits={orgUnits.data ?? []}
                 value={s.orgUnitId}
-                onChange={(e) =>
+                onChange={(id) =>
                   setScopes((rows) =>
-                    rows.map((r, i) =>
-                      i === idx ? { ...r, orgUnitId: e.target.value } : r,
-                    ),
+                    rows.map((r, i) => (i === idx ? { ...r, orgUnitId: id } : r)),
                   )
                 }
-              >
-                {orgUnits.data?.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {' '.repeat((u.level - 1) * 2)}
-                    {u.name}
-                  </option>
-                ))}
-              </Select>
+              />
               <Select
                 value={s.scope}
                 className="w-36"
