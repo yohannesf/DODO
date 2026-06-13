@@ -1,6 +1,8 @@
 /* DODO design tokens — single source of truth, per docs/design-language.md.
-   Utilitarian editorial: paper-warm neutrals, near-black ink, one cobalt
-   accent, semantic colors only for data meaning. No gradients, no shadows. */
+   "Field Instrument": cool blueprint-gray surfaces, blueprint-blue primary,
+   framed panels, semantic colors for data meaning only. Light is primary;
+   dark follows. Raw palette lives on :root / .dark; Tailwind @theme maps the
+   color utilities to those vars so a single class set re-themes both modes. */
 @import '@fontsource/ibm-plex-sans/400.css';
 @import '@fontsource/ibm-plex-sans/500.css';
 @import '@fontsource/ibm-plex-sans/600.css';
@@ -8,54 +10,127 @@
 @import '@fontsource/ibm-plex-mono/500.css';
 @import 'tailwindcss';
 
+/* --- raw palette (themed) ------------------------------------------------- */
+:root {
+  --canvas: #e8ecef;
+  --panel: #f8fafb;
+  --panel-raised: #dce3e8;
+  --sunken: #d0d8de;
+  --border: #bcc6ce;
+  --border-strong: #94a2ad;
+
+  --ink: #141a20;
+  --ink-muted: #48535d;
+  --ink-faint: #79868f;
+
+  --primary: #1c4e80;
+  --primary-hover: #143a61;
+  --primary-tint: #d6e2f0;
+  --on-primary: #ffffff;
+  --focus: #1c4e80;
+
+  --ok: #2e7d32;
+  --warn: #c77d11;
+  --danger: #c0392b;
+  --info: #1c4e80;
+}
+
+.dark {
+  --canvas: #12171c;
+  --panel: #1b232a;
+  --panel-raised: #27313a;
+  --sunken: #2e3941;
+  --border: #38444e;
+  --border-strong: #5a6b77;
+
+  --ink: #e3e9ed;
+  --ink-muted: #a4b0b9;
+  --ink-faint: #6f7e88;
+
+  --primary: #5b9bd5;
+  --primary-hover: #7db1e0;
+  --primary-tint: #1e3653;
+  --on-primary: #0b1116;
+  --focus: #5b9bd5;
+
+  /* semantic lifted ~12% lightness for dark surfaces */
+  --ok: #4c9e50;
+  --warn: #e0962b;
+  --danger: #d65548;
+  --info: #5b9bd5;
+}
+
 @theme {
-  /* color: paper + ink */
-  --color-paper: #faf8f4;
-  --color-surface: #fffefb;
-  --color-ink: #1c1a15;
-  --color-ink-muted: #6f6a5e;
-  --color-hairline: #e3dfd4;
+  /* surfaces */
+  --color-canvas: var(--canvas);
+  --color-panel: var(--panel);
+  --color-panel-raised: var(--panel-raised);
+  --color-sunken: var(--sunken);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
 
-  /* the one accent — interaction states only */
-  --color-cobalt: #1f3fbf;
-  --color-cobalt-deep: #182f8f;
+  /* ink */
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
 
-  /* semantic — data meaning only (warning / on-track / off-track) */
-  --color-ochre: #9a6b00;
-  --color-ontrack: #2e6e3e;
-  --color-offtrack: #b3261e;
+  /* brand + interaction */
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-tint: var(--primary-tint);
+  --color-on-primary: var(--on-primary);
 
-  /* typography */
+  /* semantic (data meaning only) */
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+
+  /* legacy aliases — old token names mapped to the new palette so existing
+     screens re-skin without churn. Being migrated; remove when unused. */
+  --color-paper: var(--canvas);
+  --color-surface: var(--panel);
+  --color-hairline: var(--border);
+  --color-cobalt: var(--primary);
+  --color-cobalt-deep: var(--primary-hover);
+  --color-ochre: var(--warn);
+  --color-ontrack: var(--ok);
+  --color-offtrack: var(--danger);
+
+  /* typography (Archivo wired in step 3) */
   --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
-  /* shape: 2–4 px radii maximum */
-  --radius-xs: 2px;
-  --radius-sm: 2px;
-  --radius-md: 3px;
-  --radius-lg: 4px;
-  --radius-xl: 4px;
+  /* shape: small instrument-bezel radii (4px workhorse) */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
 
-  /* motion: state changes only */
+  /* one soft shadow — transient overlays only (menus, dialogs, popovers) */
+  --shadow-overlay: 0 6px 24px -8px rgb(20 26 32 / 0.35);
+
+  /* motion */
   --ease-out-fast: cubic-bezier(0, 0, 0.2, 1);
 }
 
 @layer base {
   html {
-    background: var(--color-paper);
-    color: var(--color-ink);
+    background: var(--canvas);
+    color: var(--ink);
     font-family: var(--font-sans);
     font-size: 14px;
   }
 
   ::selection {
-    background: var(--color-cobalt);
-    color: var(--color-paper);
+    background: var(--primary);
+    color: var(--on-primary);
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-cobalt);
-    outline-offset: 1px;
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
   }
 }
 
