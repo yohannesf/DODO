@@ -1,6 +1,8 @@
-// MapLibre map (spec §8.7): org unit boundaries/points from the local Dexie
-// mirror (fully offline), choropleth coloured against target thresholds,
-// optional self-hosted PMTiles basemap with a download-once offline cache.
+// MapLibre map (spec §8.7, design language §8): org unit geometry from the
+// local Dexie mirror (fully offline). Polygons are the faint structural
+// backdrop; indicator points carry the vs-target colour ramp. A self-hosted
+// PMTiles basemap is optional context (download-once cache) — the map is
+// self-sufficient with zero external tiles.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -13,13 +15,23 @@ import { getDb, hasDb } from '../db/db';
 const BASEMAP_KEY = '__basemap';
 const BASEMAP_URL_KEY = 'dodo:basemapUrl';
 
-// thresholds vs target (spec §8.7): achievement ratio → semantic colors
+// vs-target ramp (design language §8): achievement ratio → semantic colors.
+// Concrete hexes (MapLibre paint can't read CSS vars); match §2 semantics.
 export function achievementColor(value: number, target: number | null): string {
-  if (target === null || target === 0) return '#1F3FBF'; // cobalt: no target
+  if (target === null || target === 0) return '#79868F'; // ink-faint: no target
   const ratio = value / target;
-  if (ratio >= 1) return '#2E6E3E'; // on-track green
-  if (ratio >= 0.7) return '#9A6B00'; // ochre
-  return '#B3261E'; // off-track red
+  if (ratio >= 1) return '#2E7D32'; // ok
+  if (ratio >= 0.7) return '#C77D11'; // warn
+  return '#C0392B'; // danger
+}
+
+// resolve a CSS custom property to its concrete value (for map paint, which
+// cannot use var()); adapts to light/dark at map-build time.
+function mapVar(name: string, fallback: string): string {
+  if (typeof document === 'undefined') return fallback;
+  return (
+    getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
+  );
 }
 
 export interface MapDatum {
@@ -97,7 +109,7 @@ export function MapView({
           color:
             datum?.value != null
               ? achievementColor(datum.value, datum.target)
-              : '#6F6A5E',
+              : '#79868F', // ink-faint: no data
         },
       };
     });
@@ -126,7 +138,11 @@ export function MapView({
         version: 8,
         sources: {},
         layers: [
-          { id: 'bg', type: 'background', paint: { 'background-color': '#FAF8F4' } },
+          {
+            id: 'bg',
+            type: 'background',
+            paint: { 'background-color': mapVar('--panel', '#f8fafb') },
+          },
         ],
       },
       center: [20, 5],
@@ -175,7 +191,7 @@ export function MapView({
                 type: 'fill',
                 source: 'basemap',
                 'source-layer': 'earth',
-                paint: { 'fill-color': '#F1EDE4' },
+                paint: { 'fill-color': mapVar('--panel', '#f8fafb') },
               },
               'bg',
             );
@@ -185,20 +201,30 @@ export function MapView({
         }
 
         map.addSource('orgunits', { type: 'geojson', data: geojsonRef.current });
+        // polygons are the geographic backdrop (§8): faint primary fill, ink
+        // hairline outline — not value-coloured. The data lives on the points.
         map.addLayer({
           id: 'ou-fill',
           type: 'fill',
           source: 'orgunits',
           filter: ['==', ['geometry-type'], 'Polygon'],
-          paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.5 },
+          paint: {
+            'fill-color': mapVar('--primary', '#1c4e80'),
+            'fill-opacity': 0.08,
+          },
         });
         map.addLayer({
           id: 'ou-line',
           type: 'line',
           source: 'orgunits',
           filter: ['==', ['geometry-type'], 'Polygon'],
-          paint: { 'line-color': '#1C1A15', 'line-width': 0.8 },
+          paint: {
+            'line-color': mapVar('--border-strong', '#94a2ad'),
+            'line-width': 1,
+          },
         });
+        // indicator points carry the vs-target ramp (green/ochre/red,
+        // ink-faint when no target/data)
         map.addLayer({
           id: 'ou-points',
           type: 'circle',
@@ -206,8 +232,8 @@ export function MapView({
           filter: ['==', ['geometry-type'], 'Point'],
           paint: {
             'circle-color': ['get', 'color'],
-            'circle-radius': 7,
-            'circle-stroke-color': '#1C1A15',
+            'circle-radius': 6,
+            'circle-stroke-color': mapVar('--ink', '#141a20'),
             'circle-stroke-width': 1,
           },
         });
@@ -291,15 +317,15 @@ export function MapView({
       <div
         ref={container}
         data-testid="map-canvas"
-        className={`${heightClass} w-full border border-hairline`}
+        className={`${heightClass} w-full rounded-sm border border-border`}
       />
-      <div className="absolute top-2 left-2 border border-hairline bg-surface px-2 py-1.5 text-[11px]">
-        <p className="small-caps mb-1 text-ink-muted">vs target</p>
+      <div className="absolute top-2 left-2 rounded-sm border border-border bg-panel px-2 py-1.5 text-[11px]">
+        <p className="type-label mb-1 text-ink-muted">vs target</p>
         <p>
-          <span className="text-ontrack">●</span> ≥ 100%{' '}
-          <span className="ml-2 text-ochre">●</span> 70–99%{' '}
-          <span className="ml-2 text-offtrack">●</span> &lt; 70%{' '}
-          <span className="ml-2 text-cobalt">●</span> no target
+          <span className="text-ok">●</span> ≥ 100%{' '}
+          <span className="ml-2 text-warn">●</span> 70–99%{' '}
+          <span className="ml-2 text-danger">●</span> &lt; 70%{' '}
+          <span className="ml-2 text-ink-faint">●</span> no target
         </p>
       </div>
       {basemapUrl ? (
