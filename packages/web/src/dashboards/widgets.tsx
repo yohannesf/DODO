@@ -6,6 +6,7 @@ import type { DashboardItem, Target } from '@dodo/shared';
 import { cx } from '../components';
 import { getDb, hasDb } from '../db/db';
 import { MapView, type MapDatum, achievementColor } from '../map/MapView';
+import { chartBaseOption, SERIES_DEFAULTS } from '../charts/theme';
 import { useWidgetData, type GlobalFilters, type WidgetQuery } from './useWidgetData';
 
 export interface WidgetConfig extends Partial<WidgetQuery> {
@@ -13,8 +14,6 @@ export interface WidgetConfig extends Partial<WidgetQuery> {
   chartKind?: 'bar' | 'line';
   text?: string;
 }
-
-const PALETTE = ['#1F3FBF', '#9A6B00', '#2E6E3E', '#B3261E', '#6F6A5E'];
 
 function Stamp({ asOf }: { asOf: string | null }) {
   if (!asOf) return null;
@@ -139,20 +138,14 @@ export function ChartWidget({
         result.rows.filter((r) => r.pe !== 'TOTAL').map((r) => `${r.dx}|${r.ou}`),
       ),
     ];
+    const base = chartBaseOption({ legend: keys.length > 1 });
     chart.setOption({
-      color: PALETTE,
-      textStyle: { fontFamily: 'IBM Plex Sans' },
-      tooltip: { trigger: 'axis' },
-      legend:
-        keys.length > 1
-          ? { type: 'scroll', top: 0, left: 0, right: 0, icon: 'rect', itemHeight: 8 }
-          : undefined,
-      grid: { left: 40, right: 8, top: keys.length > 1 ? 32 : 12, bottom: 20 },
-      xAxis: { type: 'category', data: periods, axisTick: { show: false } },
-      yAxis: { type: 'value', splitLine: { lineStyle: { color: '#E3DFD4' } } },
+      ...base,
+      xAxis: { ...base.xAxis, data: periods },
       series: keys.map((key) => {
         const [dx, ou] = key.split('|');
         return {
+          ...SERIES_DEFAULTS,
           name: result.meta.names[dx!] ?? dx,
           type: config.chartKind ?? 'bar',
           data: periods.map(

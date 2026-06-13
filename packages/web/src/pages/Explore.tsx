@@ -20,6 +20,7 @@ import {
 } from '../components';
 import { useEntityList } from '../api/metadata';
 import { fetchAnalytics, monthRange, type AnalyticsResult } from '../api/analytics';
+import { chartBaseOption, SERIES_DEFAULTS } from '../charts/theme';
 import { ErrorNote } from './configure/common';
 import { Page } from './Page';
 
@@ -31,8 +32,6 @@ echarts.use([
   TooltipComponent,
   CanvasRenderer,
 ]);
-
-const PALETTE = ['#1F3FBF', '#9A6B00', '#2E6E3E', '#B3261E', '#6F6A5E'];
 
 function Chart({
   result,
@@ -48,29 +47,14 @@ function Chart({
     if (!ref.current) return;
     const chart = echarts.init(ref.current);
     const seriesKeys = [...new Set(result.rows.map((r) => `${r.dx}|${r.ou}`))];
+    const base = chartBaseOption({ legend: true });
     chart.setOption({
-      color: PALETTE,
-      textStyle: { fontFamily: 'IBM Plex Sans' },
-      tooltip: { trigger: 'axis' },
-      // scroll keeps the legend to one row — it must never overlap the plot
-      legend: {
-        type: 'scroll',
-        top: 0,
-        left: 0,
-        right: 0,
-        icon: 'rect',
-        itemHeight: 8,
-        itemWidth: 8,
-        itemGap: 16,
-        // full name stays available in the tooltip
-        formatter: (name: string) => (name.length > 36 ? `${name.slice(0, 35)}…` : name),
-      },
-      grid: { left: 48, right: 12, top: 40, bottom: 24 },
-      xAxis: { type: 'category', data: periods, axisTick: { show: false } },
-      yAxis: { type: 'value', splitLine: { lineStyle: { color: '#E3DFD4' } } },
+      ...base,
+      xAxis: { ...base.xAxis, data: periods },
       series: seriesKeys.map((key) => {
         const [dx, ou] = key.split('|');
         return {
+          ...SERIES_DEFAULTS,
           name: `${result.meta.names[dx!] ?? dx} — ${result.meta.names[ou!] ?? ou}`,
           type: kind,
           data: periods.map(
