@@ -12,7 +12,7 @@ component library).
 
 The previous language ("utilitarian editorial": warm cream `#FAF8F4`, hairline rules,
 zero radius, big section numerals, single cobalt accent, near-monochrome) reads as
-*under-designed*, not minimal. Two specific reasons:
+_under-designed_, not minimal. Two specific reasons:
 
 1. Warm-cream + hairline + broadsheet density is a generic default look, not a
    distinctive choice. It appears regardless of subject.
@@ -46,6 +46,7 @@ properties / Tailwind v4 `@theme` / vanilla-extract — match the repo's existin
 mechanism). Light theme is primary; dark theme values follow.
 
 ### Surfaces (light)
+
 ```
 --canvas        #E8ECEF   /* app background, cool gray-blue */
 --panel         #F8FAFB   /* panel body, near-white cool */
@@ -56,6 +57,7 @@ mechanism). Light theme is primary; dark theme values follow.
 ```
 
 ### Ink
+
 ```
 --ink           #141A20   /* primary text, cool near-black */
 --ink-muted     #48535D   /* secondary text, labels */
@@ -63,6 +65,7 @@ mechanism). Light theme is primary; dark theme values follow.
 ```
 
 ### Brand + interaction
+
 ```
 --primary       #1C4E80   /* blueprint blue — buttons, links, selection */
 --primary-hover #143A61
@@ -72,6 +75,7 @@ mechanism). Light theme is primary; dark theme values follow.
 ```
 
 ### Semantic (data meaning only — never decorative)
+
 ```
 --ok       #2E7D32   /* on-track, ≥100% vs target, online */
 --warn     #C77D11   /* 70–99%, unsynced/pending, attention */
@@ -80,12 +84,15 @@ mechanism). Light theme is primary; dark theme values follow.
 ```
 
 ### Categorical chart palette (8, ordered; colorblind-aware on cool gray)
+
 ```
 #1C4E80  #C2570B  #2E7D6B  #8A4F9E  #B23A48  #5B6E8C  #C99A1E  #3F8E8C
 ```
+
 Use in this order for series. For >8 series, dash/pattern instead of recycling hues.
 
 ### Dark theme
+
 ```
 --canvas #12171C  --panel #1B232A  --panel-raised #27313A  --sunken #2E3941
 --border #38444E  --border-strong #5A6B77
@@ -111,6 +118,7 @@ Do **not** use Inter or Geist as primary (generic signal), and no high-contrast
 display serif (that's the cream-cluster default we are leaving).
 
 ### Scale (rem, 16px base)
+
 ```
 display   2.0   / 700  / -0.01em   /* KPI numbers, page section title */
 h1        1.5   / 700
@@ -119,6 +127,7 @@ body      0.875 / 400               /* default UI text */
 data      0.8125/ 450 mono tnum     /* table cells, numeric fields */
 label     0.6875/ 600 caps  +0.06em /* eyebrows, column headers, status */
 ```
+
 Section markers (the old big `01 / 04 / 05`): remove. They encoded nothing —
 the nav already names the page. Reclaim that vertical space for content.
 
@@ -144,6 +153,7 @@ the nav already names the page. Reclaim that vertical space for content.
 ## 5. The Panel (core structural change)
 
 Every dashboard widget, chart, map, table, and form section becomes a **Panel**:
+
 ```
 ┌─────────────────────────────────────────────┐
 │ HEADER  title (label caps)        [toolbar] │  36px, --panel-raised, 1px bottom border
@@ -154,6 +164,7 @@ Every dashboard widget, chart, map, table, and form section becomes a **Panel**:
 │ FOOTER  meta / pagination / source stamp    │  28px, --ink-faint, top hairline
 └─────────────────────────────────────────────┘
 ```
+
 - **Header toolbar** = the per-widget actions the competitor portals have and DODO
   lacks: `fullscreen`, `download ▾` (PNG / CSV / XLS), `view as table`. Icon buttons,
   ghost style, revealed on hover/focus, always keyboard reachable.
@@ -197,6 +208,7 @@ and outstanding offline work.
 │ ▣ 0 unsynced                   │   any pending: count in --warn, becomes the focus
 └───────────────────────────────┘
 ```
+
 States: ONLINE/synced (calm, `--ok`), ONLINE/syncing (animated, `--primary`),
 OFFLINE with N unsynced (`--warn`, count prominent), CONFLICT (`--danger`, links to
 resolver). Clicking opens the Sync Center. This is the only place a small,
@@ -254,6 +266,7 @@ Suggested commits: `add cool token palette`, `add panel component`,
 `fix legend overlap in explore`, `style maplibre basemap`, `add styleguide route`.
 
 ## 11. Done when
+
 `/dev/styleguide` renders all primitives in both themes; dashboard, maps, and explore
 use Panels with working header toolbars; legends never overlap plots; basemap and
 indicator coloring render; compact density is default; no item in §9 appears anywhere;
