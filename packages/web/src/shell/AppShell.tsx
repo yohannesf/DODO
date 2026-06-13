@@ -31,7 +31,9 @@ export function AppShell() {
         </div>
         <div className="flex items-center gap-4">
           <SyncGauge />
-          <span className="text-[12px] text-ink-muted">{user?.displayName}</span>
+          <span className="hidden text-[12px] text-ink-muted sm:inline">
+            {user?.displayName}
+          </span>
           <button
             type="button"
             className="type-label cursor-pointer text-ink-muted hover:text-primary"
@@ -43,17 +45,21 @@ export function AppShell() {
           </button>
         </div>
       </header>
-      <div className="grid min-h-0 grid-cols-[240px_1fr]">
-        <nav aria-label="Primary" className="border-r border-border bg-panel py-2">
-          <ul>
+      <div className="flex min-h-0 flex-col md:grid md:grid-cols-[240px_1fr]">
+        {/* sidebar on md+, horizontal scroll strip on mobile */}
+        <nav
+          aria-label="Primary"
+          className="shrink-0 overflow-x-auto border-b border-border bg-panel md:border-r md:border-b-0 md:py-2"
+        >
+          <ul className="flex md:block">
             {NAV.map((item) => (
               <li key={item.to}>
                 <Link
                   to={item.to}
-                  className="block border-l-2 border-transparent px-4 py-1.5 text-sm text-ink-muted transition-colors duration-150 ease-out hover:bg-panel-raised hover:text-ink"
+                  className="block border-l-2 border-transparent px-4 py-2 text-sm whitespace-nowrap text-ink-muted transition-colors duration-150 ease-out hover:bg-panel-raised hover:text-ink md:py-1.5"
                   activeProps={{
                     className:
-                      'block border-l-2 border-primary bg-primary-tint px-4 py-1.5 text-sm font-medium text-primary',
+                      'block border-l-2 border-primary bg-primary-tint px-4 py-2 text-sm font-medium whitespace-nowrap text-primary md:py-1.5',
                   }}
                 >
                   {t(item.key)}
@@ -62,7 +68,7 @@ export function AppShell() {
             ))}
           </ul>
         </nav>
-        <main className="min-w-0 overflow-x-auto bg-canvas px-6 py-5">
+        <main className="min-w-0 flex-1 overflow-x-auto bg-canvas px-4 py-4 md:px-6 md:py-5">
           <Outlet />
         </main>
       </div>

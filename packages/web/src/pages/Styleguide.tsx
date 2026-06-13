@@ -68,8 +68,18 @@ function SampleChart({ theme }: { theme: 'light' | 'dark' }) {
       ...base,
       xAxis: { ...base.xAxis, data: periods },
       series: [
-        { ...SERIES_DEFAULTS, name: 'North', type: 'line', data: [30, 42, 38, 51, 49, 60] },
-        { ...SERIES_DEFAULTS, name: 'South', type: 'line', data: [20, 24, 29, 27, 33, 31] },
+        {
+          ...SERIES_DEFAULTS,
+          name: 'North',
+          type: 'line',
+          data: [30, 42, 38, 51, 49, 60],
+        },
+        {
+          ...SERIES_DEFAULTS,
+          name: 'South',
+          type: 'line',
+          data: [20, 24, 29, 27, 33, 31],
+        },
         { ...SERIES_DEFAULTS, name: 'East', type: 'bar', data: [12, 18, 15, 22, 19, 25] },
       ],
     });
@@ -193,7 +203,9 @@ export function Styleguide() {
             <p className="type-display">Display 2.0 — 102,459</p>
             <p className="type-h1">Heading 1</p>
             <p className="type-h2">Heading 2</p>
-            <p className="type-body">Body — the quick brown fox jumps over 13 boreholes.</p>
+            <p className="type-body">
+              Body — the quick brown fox jumps over 13 boreholes.
+            </p>
             <p className="type-data">data 0123456789 · tabular mono</p>
             <p className="type-label text-ink-muted">label / eyebrow</p>
           </div>
@@ -288,7 +300,9 @@ export function Styleguide() {
               <p className="type-display tnum text-danger">312</p>
               <span
                 className="type-label mt-1 inline-flex rounded-xs px-1.5 py-0.5 text-danger"
-                style={{ background: 'color-mix(in srgb, var(--danger) 14%, transparent)' }}
+                style={{
+                  background: 'color-mix(in srgb, var(--danger) 14%, transparent)',
+                }}
               >
                 ▼ 62% of target
               </span>

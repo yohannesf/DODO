@@ -127,7 +127,7 @@ export function Explore() {
 
   return (
     <Page title="Explore">
-      <div className="grid max-w-5xl grid-cols-[260px_1fr] gap-8">
+      <div className="grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-[260px_1fr]">
         <aside className="space-y-4 text-sm">
           <FieldGroup label={`data (${dx.length})`}>
             <div className="max-h-44 space-y-0.5 overflow-y-auto border border-hairline bg-surface p-2">
