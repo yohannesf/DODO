@@ -379,6 +379,36 @@ describe('disaggregation', () => {
     expect(same.id).toBe(femaleYoung.id);
   });
 
+  it('persists nested disaggregation parent_id (spec §16.1)', async () => {
+    // SDG 6.1.1 shape: "Safely managed" → "National" child option.
+    const svc = await post('/api/metadata/categories', {
+      name: 'Service level',
+      code: 'SVCLVL',
+    });
+    const svcId = svc.body.id;
+
+    const parent = await post('/api/metadata/category-options', {
+      categoryId: svcId,
+      name: 'Safely managed',
+      code: 'SVC-SAFE',
+    });
+    expect(parent.status).toBe(201);
+    expect(parent.body.parentId).toBeNull();
+
+    const child = await post('/api/metadata/category-options', {
+      categoryId: svcId,
+      parentId: parent.body.id,
+      name: 'Safely managed — National',
+      code: 'SVC-SAFE-NAT',
+    });
+    expect(child.status).toBe(201);
+    expect(child.body.parentId).toBe(parent.body.id);
+
+    // round-trips through get (indexed for the entry-grid tree fetch)
+    const fetched = await get(`/api/metadata/category-options/${child.body.id}`);
+    expect(fetched.body.parentId).toBe(parent.body.id);
+  });
+
   it('seeded the reserved default combo', async () => {
     const cocs = await get(
       `/api/metadata/category-combos/${DEFAULT_CATEGORY_COMBO_ID}/option-combos`,

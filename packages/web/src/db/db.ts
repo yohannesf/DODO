@@ -112,6 +112,11 @@ export class DodoDb extends Dexie {
       // a "data as of" stamp (spec §8.6)
       widgetCache: 'key',
     });
+    // v0.2.0 — nested disaggregation trees (spec §16.1): index parentId so the
+    // entry grid can fetch children when rendering depth > 1.
+    this.version(5).stores({
+      categoryOptions: 'id, categoryId, parentId',
+    });
   }
 }
 

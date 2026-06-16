@@ -137,6 +137,8 @@ export type Category = z.infer<typeof categorySchema>;
 
 export const categoryOptionInputSchema = z.object({
   categoryId: z.string().uuid(),
+  // nested disaggregation parent (spec §16.1); null = top-level option
+  parentId: z.string().uuid().nullable().default(null),
   name: nameSchema,
   code: codeSchema,
   sortOrder: z.number().int().min(0).default(0),

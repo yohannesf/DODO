@@ -141,6 +141,10 @@ export const categoryOption = pgTable(
     categoryId: uuid('category_id')
       .notNull()
       .references(() => category.id),
+    // self-reference for nested disaggregation trees (spec §16.1); the FK is
+    // declared in the migration, like org_unit.parent_id, to avoid a circular
+    // type reference in drizzle.
+    parentId: uuid('parent_id'),
     name: text('name').notNull(),
     code: text('code').notNull(),
     sortOrder: integer('sort_order').notNull().default(0),
@@ -150,6 +154,7 @@ export const categoryOption = pgTable(
       .on(t.code)
       .where(sql`deleted_at is null`),
     index('category_option_category').on(t.categoryId),
+    index('category_option_parent').on(t.parentId),
   ],
 );
 
