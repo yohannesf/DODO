@@ -51,6 +51,8 @@ type Row = Record<string, unknown>;
 
 export class DodoDb extends Dexie {
   programs!: Table<Row, string>;
+  programFieldDefs!: Table<Row, string>;
+  programFieldValues!: Table<Row, string>;
   orgUnitLevels!: Table<Row, string>;
   orgUnits!: Table<OrgUnit, string>;
   categories!: Table<Row, string>;
@@ -116,6 +118,11 @@ export class DodoDb extends Dexie {
     // entry grid can fetch children when rendering depth > 1.
     this.version(5).stores({
       categoryOptions: 'id, categoryId, parentId',
+    });
+    // v0.2.0 — custom project metadata fields (spec §16.2); synced metadata.
+    this.version(6).stores({
+      programFieldDefs: 'id, programId',
+      programFieldValues: 'id, programId, fieldDefId',
     });
   }
 }

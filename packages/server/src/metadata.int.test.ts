@@ -181,6 +181,70 @@ describe('programs crud', () => {
   });
 });
 
+describe('program custom fields (spec §16.2)', () => {
+  it('expands program with status, currency, dates, metadata', async () => {
+    const created = await post('/api/metadata/programs', {
+      name: 'Health Project',
+      code: 'HEALTHPRJ',
+      status: 'draft',
+      currency: 'EUR',
+      fiscalYearStart: 7,
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      metadata: { donor: 'BMGF' },
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.status).toBe('draft');
+    expect(created.body.currency).toBe('EUR');
+    expect(created.body.fiscalYearStart).toBe(7);
+    expect(created.body.metadata).toEqual({ donor: 'BMGF' });
+
+    const bad = await post('/api/metadata/programs', {
+      name: 'X',
+      code: 'BADSTAT',
+      status: 'archived',
+    });
+    expect(bad.status).toBe(400);
+  });
+
+  it('CRUDs field definitions and values', async () => {
+    const prog = await post('/api/metadata/programs', {
+      name: 'Field Test',
+      code: 'FIELDTEST',
+    });
+    const programId = prog.body.id;
+
+    const def = await post('/api/metadata/program-fields', {
+      programId,
+      fieldName: 'Region office',
+      fieldType: 'dropdown',
+      isRequired: true,
+      options: ['North', 'South'],
+    });
+    expect(def.status).toBe(201);
+    expect(def.body.fieldType).toBe('dropdown');
+    expect(def.body.options).toEqual(['North', 'South']);
+
+    const val = await post('/api/metadata/program-field-values', {
+      programId,
+      fieldDefId: def.body.id,
+      value: 'North',
+    });
+    expect(val.status).toBe(201);
+    expect(val.body.value).toBe('North');
+
+    const defs = await get('/api/metadata/program-fields');
+    expect(defs.body.some((d: { id: string }) => d.id === def.body.id)).toBe(true);
+
+    const badType = await post('/api/metadata/program-fields', {
+      programId,
+      fieldName: 'X',
+      fieldType: 'currency',
+    });
+    expect(badType.status).toBe(400);
+  });
+});
+
 describe('org units', () => {
   let countryId: string;
   let regionId: string;

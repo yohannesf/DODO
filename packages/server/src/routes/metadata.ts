@@ -14,6 +14,8 @@ import {
   orgUnitInputSchema,
   orgUnitLevelInputSchema,
   programInputSchema,
+  programFieldDefInputSchema,
+  programFieldValueInputSchema,
   dashboardInputSchema,
   indicatorInputSchema,
   resultsFrameworkInputSchema,
@@ -32,6 +34,8 @@ import {
   optionSet,
   orgUnitLevel,
   program,
+  programFieldDef,
+  programFieldValue,
   role,
   dataElement,
   indicator,
@@ -100,6 +104,18 @@ export function registerMetadataRoutes(app: FastifyInstance, db: Db) {
     programInputSchema,
     programInputSchema.partial(),
     simple(program, 'program'),
+  );
+  crudRoutes(
+    'program-fields',
+    programFieldDefInputSchema,
+    programFieldDefInputSchema.partial(),
+    simple(programFieldDef, 'program field'),
+  );
+  crudRoutes(
+    'program-field-values',
+    programFieldValueInputSchema,
+    programFieldValueInputSchema.partial(),
+    simple(programFieldValue, 'program field value'),
   );
   crudRoutes(
     'org-unit-levels',

@@ -5,6 +5,8 @@ import { periodStringSchema } from './schemas.js';
 /** Collections replicated to clients; names double as Dexie table names. */
 export const SYNC_COLLECTIONS = [
   'programs',
+  'programFieldDefs',
+  'programFieldValues',
   'orgUnitLevels',
   'orgUnits',
   'categories',

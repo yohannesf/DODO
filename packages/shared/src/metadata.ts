@@ -95,14 +95,61 @@ export type FeatureCollection = z.infer<typeof featureCollectionSchema>;
 
 // --- Entities ---------------------------------------------------------------
 
+export const PROGRAM_STATUSES = ['draft', 'active', 'closed', 'suspended'] as const;
+export const programStatusSchema = z.enum(PROGRAM_STATUSES);
+export type ProgramStatus = z.infer<typeof programStatusSchema>;
+
 export const programInputSchema = z.object({
   name: nameSchema,
   code: codeSchema,
   description: z.string().max(2000).default(''),
   active: z.boolean().default(true),
+  // project-level container fields (spec §16.2); all default so existing
+  // callers stay valid.
+  status: programStatusSchema.default('active'),
+  currency: z.string().min(1).max(8).default('USD'),
+  fiscalYearStart: z.number().int().min(1).max(12).default(1),
+  startDate: z.string().date().nullable().default(null),
+  endDate: z.string().date().nullable().default(null),
+  metadata: z.record(z.unknown()).default({}),
 });
 export const programSchema = programInputSchema.extend(metaFieldsSchema.shape);
 export type Program = z.infer<typeof programSchema>;
+
+// Custom project metadata fields (spec §16.2).
+export const PROGRAM_FIELD_TYPES = [
+  'text',
+  'number',
+  'date',
+  'dropdown',
+  'boolean',
+] as const;
+export const programFieldTypeSchema = z.enum(PROGRAM_FIELD_TYPES);
+export type ProgramFieldType = z.infer<typeof programFieldTypeSchema>;
+
+export const programFieldDefInputSchema = z.object({
+  programId: z.string().uuid(),
+  fieldName: nameSchema,
+  fieldType: programFieldTypeSchema,
+  isRequired: z.boolean().default(false),
+  // dropdown choices; null/empty for non-dropdown types
+  options: z.array(z.string()).nullable().default(null),
+  displayOrder: z.number().int().min(0).default(0),
+});
+export const programFieldDefSchema = programFieldDefInputSchema.extend(
+  metaFieldsSchema.shape,
+);
+export type ProgramFieldDef = z.infer<typeof programFieldDefSchema>;
+
+export const programFieldValueInputSchema = z.object({
+  programId: z.string().uuid(),
+  fieldDefId: z.string().uuid(),
+  value: z.string().max(50_000).nullable().default(null),
+});
+export const programFieldValueSchema = programFieldValueInputSchema.extend(
+  metaFieldsSchema.shape,
+);
+export type ProgramFieldValue = z.infer<typeof programFieldValueSchema>;
 
 export const orgUnitLevelInputSchema = z.object({
   level: z.number().int().min(1).max(12),

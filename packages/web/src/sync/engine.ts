@@ -196,6 +196,8 @@ async function applyPullPage(page: PullResponse): Promise<void> {
   const db = getDb();
   const tables = [
     db.programs,
+    db.programFieldDefs,
+    db.programFieldValues,
     db.orgUnitLevels,
     db.orgUnits,
     db.categories,

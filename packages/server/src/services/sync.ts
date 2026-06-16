@@ -38,6 +38,8 @@ import {
   indicator,
   orgUnitLevel,
   program,
+  programFieldDef,
+  programFieldValue,
   resultsFramework,
   submission,
   target,
@@ -121,6 +123,8 @@ export async function pull(
   // simple flat collections
   const flat: Array<[SyncCollection, typeof program]> = [
     ['programs', program],
+    ['programFieldDefs', programFieldDef as unknown as typeof program],
+    ['programFieldValues', programFieldValue as unknown as typeof program],
     ['orgUnitLevels', orgUnitLevel as unknown as typeof program],
     ['categories', category as unknown as typeof program],
     ['categoryOptions', categoryOption as unknown as typeof program],

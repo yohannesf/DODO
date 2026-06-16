@@ -72,11 +72,55 @@ export const program = pgTable(
     code: text('code').notNull(),
     description: text('description').notNull().default(''),
     active: boolean('active').notNull().default(true),
+    // project-level container fields (spec §16.2); status check lives in the
+    // migration: 'draft' | 'active' | 'closed' | 'suspended'.
+    status: text('status').notNull().default('active'),
+    currency: text('currency').notNull().default('USD'),
+    fiscalYearStart: integer('fiscal_year_start').notNull().default(1),
+    startDate: date('start_date'),
+    endDate: date('end_date'),
+    metadata: jsonb('metadata').notNull().default({}),
   },
   (t) => [
     uniqueIndex('program_code_live')
       .on(t.code)
       .where(sql`deleted_at is null`),
+  ],
+);
+
+// Custom project metadata fields (spec §16.2) — replace hardcoded attributes.
+export const programFieldDef = pgTable(
+  'program_field_def',
+  {
+    ...metaColumns,
+    programId: uuid('program_id')
+      .notNull()
+      .references(() => program.id),
+    fieldName: text('field_name').notNull(),
+    // text | number | date | dropdown | boolean
+    fieldType: text('field_type').notNull(),
+    isRequired: boolean('is_required').notNull().default(false),
+    options: jsonb('options'),
+    displayOrder: integer('display_order').notNull().default(0),
+  },
+  (t) => [index('program_field_def_program').on(t.programId)],
+);
+
+export const programFieldValue = pgTable(
+  'program_field_value',
+  {
+    ...metaColumns,
+    programId: uuid('program_id')
+      .notNull()
+      .references(() => program.id),
+    fieldDefId: uuid('field_def_id')
+      .notNull()
+      .references(() => programFieldDef.id),
+    value: text('value'),
+  },
+  (t) => [
+    index('program_field_value_program').on(t.programId),
+    index('program_field_value_def').on(t.fieldDefId),
   ],
 );
 
