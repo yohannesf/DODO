@@ -49,12 +49,64 @@ interface CommentTarget {
 interface GridGroup {
   comboId: string | null;
   cocs: CategoryOptionCombo[];
+  // COCs in display order with their nesting depth (spec §16.1). Depth is 0 for
+  // flat disaggregation; for a single-category combo whose options nest via
+  // parent_id, children follow their parent in DFS order.
+  orderedCocs: Array<{ coc: CategoryOptionCombo; depth: number }>;
+  nested: boolean;
   elements: Array<{ de: DataElement; required: boolean }>;
 }
 
 interface GridSection {
   name: string;
   groups: GridGroup[];
+}
+
+/**
+ * Order a group's category-option-combos as a tree when the combo is a single
+ * category whose options nest via parent_id (spec §16.1). Returns flat order
+ * (depth 0) otherwise. Every option keeps its own column — nesting is a display
+ * grouping only (ADR 003), so COC materialisation is unchanged.
+ */
+function orderCocsAsTree(
+  cocs: CategoryOptionCombo[],
+  optionById: Map<string, { parentId: string | null; sortOrder: number }>,
+): {
+  orderedCocs: Array<{ coc: CategoryOptionCombo; depth: number }>;
+  nested: boolean;
+} {
+  const flat = () => ({
+    orderedCocs: cocs.map((coc) => ({ coc, depth: 0 })),
+    nested: false,
+  });
+  // only single-option COCs map 1:1 to one category's option tree
+  if (!cocs.every((c) => c.optionIds.length === 1)) return flat();
+
+  const cocByOption = new Map(cocs.map((c) => [c.optionIds[0]!, c]));
+  const present = new Set(cocByOption.keys());
+  const childrenOf = new Map<string | null, string[]>();
+  let nested = false;
+  for (const optId of present) {
+    const parentId = optionById.get(optId)?.parentId ?? null;
+    const parent = parentId && present.has(parentId) ? parentId : null;
+    if (parent) nested = true;
+    childrenOf.set(parent, [...(childrenOf.get(parent) ?? []), optId]);
+  }
+  if (!nested) return flat();
+
+  const bySort = (ids: string[]) =>
+    [...ids].sort(
+      (a, b) => (optionById.get(a)?.sortOrder ?? 0) - (optionById.get(b)?.sortOrder ?? 0),
+    );
+  const orderedCocs: Array<{ coc: CategoryOptionCombo; depth: number }> = [];
+  const walk = (parent: string | null, depth: number) => {
+    for (const optId of bySort(childrenOf.get(parent) ?? [])) {
+      orderedCocs.push({ coc: cocByOption.get(optId)!, depth });
+      walk(optId, depth + 1);
+    }
+  };
+  walk(null, 0);
+  return { orderedCocs, nested };
 }
 
 function useEntryModel(datasetId: string, orgUnitId: string, period: string) {
@@ -192,6 +244,15 @@ export function EnterData() {
 
   const sections: GridSection[] = useMemo(() => {
     if (!dataset || !model.dataElements || !model.cocs) return [];
+    const optionById = new Map(
+      (model.categoryOptions ?? []).map((o) => [
+        o.id as string,
+        {
+          parentId: (o.parentId as string | null) ?? null,
+          sortOrder: (o.sortOrder as number) ?? 0,
+        },
+      ]),
+    );
     const bySection = new Map<string, GridGroup[]>();
     for (const el of [...dataset.elements].sort((a, b) => a.sortOrder - b.sortOrder)) {
       const de = model.dataElements.find((d) => d.id === el.dataElementId);
@@ -200,22 +261,20 @@ export function EnterData() {
       const comboId = de.categoryComboId;
       let group = groups.length > 0 ? groups[groups.length - 1]! : null;
       if (!group || group.comboId !== comboId) {
-        group = {
-          comboId,
-          cocs: comboId
-            ? model.cocs
-                .filter((c) => c.comboId === comboId)
-                .sort((a, b) => a.name.localeCompare(b.name))
-            : [],
-          elements: [],
-        };
+        const cocs = comboId
+          ? model.cocs
+              .filter((c) => c.comboId === comboId)
+              .sort((a, b) => a.name.localeCompare(b.name))
+          : [];
+        const { orderedCocs, nested } = orderCocsAsTree(cocs, optionById);
+        group = { comboId, cocs, orderedCocs, nested, elements: [] };
         groups.push(group);
       }
       group.elements.push({ de, required: el.required });
       bySection.set(el.section, groups);
     }
     return [...bySection.entries()].map(([name, groups]) => ({ name, groups }));
-  }, [dataset, model.dataElements, model.cocs]);
+  }, [dataset, model.dataElements, model.cocs, model.categoryOptions]);
 
   // --- validation (spec §8.3: run at entry time, offline) ---------------------
 
@@ -473,11 +532,21 @@ export function EnterData() {
                       {group.cocs.length > 0 ? (
                         <tr>
                           <th className="w-2/5 border-b border-ink" />
-                          {group.cocs.map((coc) => (
+                          {group.orderedCocs.map(({ coc, depth }) => (
                             <th
                               key={coc.id}
-                              className="small-caps border-b border-ink px-2 pb-1 text-right font-medium text-ink-muted"
+                              className={`small-caps border-b border-ink px-2 pb-1 font-medium text-ink-muted ${
+                                group.nested ? 'text-left' : 'text-right'
+                              }`}
+                              style={
+                                group.nested && depth > 0
+                                  ? { paddingLeft: depth * 14 + 8 }
+                                  : undefined
+                              }
                             >
+                              {group.nested && depth > 0 ? (
+                                <span className="mr-1 text-ink-faint">└</span>
+                              ) : null}
                               {coc.name}
                             </th>
                           ))}
@@ -502,7 +571,7 @@ export function EnterData() {
                         const row = rowCounter;
                         const cocsForRow =
                           group.cocs.length > 0
-                            ? group.cocs
+                            ? group.orderedCocs.map((o) => o.coc)
                             : [
                                 {
                                   id: DEFAULT_CATEGORY_OPTION_COMBO_ID,
