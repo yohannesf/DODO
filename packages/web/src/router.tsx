@@ -29,6 +29,7 @@ import { DatasetsPage } from './pages/configure/Datasets';
 import { UsersPage } from './pages/configure/Users';
 import { ValidationPage } from './pages/configure/Validation';
 import { IndicatorsPage } from './pages/configure/Indicators';
+import { FrameworksPage } from './pages/configure/Frameworks';
 import { OperationsPage } from './pages/configure/Operations';
 
 const rootRoute = createRootRoute({
@@ -122,6 +123,7 @@ const routeTree = rootRoute.addChildren([
       createRoute({ ...configureChild, path: 'datasets', component: DatasetsPage }),
       createRoute({ ...configureChild, path: 'validation', component: ValidationPage }),
       createRoute({ ...configureChild, path: 'indicators', component: IndicatorsPage }),
+      createRoute({ ...configureChild, path: 'frameworks', component: FrameworksPage }),
       createRoute({ ...configureChild, path: 'users', component: UsersPage }),
       createRoute({ ...configureChild, path: 'operations', component: OperationsPage }),
     ]),

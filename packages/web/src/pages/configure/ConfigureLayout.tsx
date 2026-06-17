@@ -7,6 +7,7 @@ const SECTIONS = [
   { to: '/configure/disaggregation', label: 'Disaggregation' },
   { to: '/configure/data-elements', label: 'Data elements' },
   { to: '/configure/indicators', label: 'Indicators' },
+  { to: '/configure/frameworks', label: 'Frameworks' },
   { to: '/configure/option-sets', label: 'Option sets' },
   { to: '/configure/datasets', label: 'Datasets' },
   { to: '/configure/validation', label: 'Validation' },
