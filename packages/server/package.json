@@ -12,6 +12,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "migrate": "tsx src/migrate.ts",
+    "migrate:rf": "tsx src/migrations/rf-to-framework.ts",
     "seed": "tsx src/seed.ts"
   },
   "dependencies": {
