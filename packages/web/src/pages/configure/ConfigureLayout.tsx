@@ -10,6 +10,7 @@ const SECTIONS = [
   { to: '/configure/frameworks', label: 'Frameworks' },
   { to: '/configure/option-sets', label: 'Option sets' },
   { to: '/configure/datasets', label: 'Datasets' },
+  { to: '/configure/export-templates', label: 'Export templates' },
   { to: '/configure/validation', label: 'Validation' },
   { to: '/configure/users', label: 'Users & roles' },
   { to: '/configure/operations', label: 'Operations' },

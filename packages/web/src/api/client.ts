@@ -64,8 +64,23 @@ async function rawForm(url: string, form: FormData) {
 export const api = {
   get: <T>(url: string) => request<T>('GET', url),
   post: <T>(url: string, body: unknown) => request<T>('POST', url, body),
+  put: <T>(url: string, body: unknown) => request<T>('PUT', url, body),
   patch: <T>(url: string, body: unknown) => request<T>('PATCH', url, body),
   delete: (url: string) => request<void>('DELETE', url),
+  // authenticated file download → triggers a browser save (the bearer token
+  // can't ride a plain <a href>, spec §16.13)
+  download: async (url: string, filename: string): Promise<void> => {
+    let res = await rawRequest('GET', url);
+    if (res.status === 401 && (await tokens.refresh()))
+      res = await rawRequest('GET', url);
+    if (!res.ok) throw new ApiError(res.status, `download failed (${res.status})`);
+    const href = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = href;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(href);
+  },
   // multipart upload (spec §16.3) with the same one-refresh-retry as request()
   postForm: async <T>(url: string, form: FormData): Promise<T> => {
     let res = await rawForm(url, form);

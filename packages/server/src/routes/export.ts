@@ -91,6 +91,11 @@ export function registerExportRoutes(app: FastifyInstance, db: Db, filesDir: str
     const [job] = await db.select().from(exportJob).where(eq(exportJob.id, id));
     return reply.code(201).send(job);
   });
+  app.get('/api/export/jobs', read, async (req) => {
+    const q = z.object({ template: z.string().uuid().optional() }).parse(req.query);
+    const rows = await db.select().from(exportJob);
+    return q.template ? rows.filter((j) => j.templateId === q.template) : rows;
+  });
   app.get('/api/export/jobs/:id', read, async (req) => {
     const { id } = idParam.parse(req.params);
     const [job] = await db.select().from(exportJob).where(eq(exportJob.id, id));
