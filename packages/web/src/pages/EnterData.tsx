@@ -18,6 +18,7 @@ import {
   type CategoryOptionCombo,
   type DataElement,
   type Dataset,
+  type EvidenceRequirement,
   type RuleResult,
   type ValidationRule,
 } from '@dodo/shared';
@@ -37,6 +38,7 @@ import { getDb, hasDb, type ConflictRow, type LocalDataValue } from '../db/db';
 import { enqueueSubmissionComplete } from '../sync/engine';
 import { EntryCell, type CellFlags } from '../entry/EntryCell';
 import { ConflictDialog } from '../entry/ConflictDialog';
+import { EvidencePanel, type MediaLite } from '../entry/EvidencePanel';
 import { Page } from './Page';
 
 interface CommentTarget {
@@ -170,6 +172,15 @@ function useEntryModel(datasetId: string, orgUnitId: string, period: string) {
         : undefined,
     [datasetId, orgUnitId, period],
   );
+  const programs = useLiveQuery(() => (hasDb() ? getDb().programs.toArray() : []), []);
+  const evidenceRequirements = useLiveQuery(
+    () => (hasDb() ? getDb().evidenceRequirements.toArray() : []),
+    [],
+  );
+  const mediaFiles = useLiveQuery(
+    () => (hasDb() ? getDb().mediaFiles.toArray() : []),
+    [],
+  );
 
   return {
     datasets,
@@ -181,6 +192,9 @@ function useEntryModel(datasetId: string, orgUnitId: string, period: string) {
     values,
     conflicts,
     submission,
+    programs,
+    evidenceRequirements,
+    mediaFiles,
   };
 }
 
@@ -421,6 +435,74 @@ export function EnterData() {
     return { totalCells, filled, requiredCells, requiredFilled };
   }, [sections, valueByCell]);
 
+  // --- evidence (spec §16.3) ---------------------------------------------------
+
+  const reqsByDe = useMemo(() => {
+    const m = new Map<string, EvidenceRequirement[]>();
+    for (const r of (model.evidenceRequirements ??
+      []) as unknown as EvidenceRequirement[]) {
+      m.set(r.dataElementId, [...(m.get(r.dataElementId) ?? []), r]);
+    }
+    return m;
+  }, [model.evidenceRequirements]);
+
+  const programId =
+    (dataset?.programId as string | null | undefined) ??
+    (model.programs?.[0]?.id as string | undefined) ??
+    null;
+
+  const mediaByDe = useMemo(() => {
+    const m = new Map<string, MediaLite[]>();
+    for (const row of (model.mediaFiles ?? []) as Array<Record<string, unknown>>) {
+      const deId = row.dataElementId as string;
+      m.set(deId, [
+        ...(m.get(deId) ?? []),
+        {
+          id: row.id as string,
+          evidenceType: row.evidenceType as string,
+          syncStatus: (row.syncStatus as string) ?? 'pending',
+          fileName: (row.fileName as string | null) ?? null,
+        },
+      ]);
+    }
+    return m;
+  }, [model.mediaFiles]);
+
+  // data elements in this dataset that carry evidence requirements
+  const evidenceElements = useMemo(() => {
+    const out: Array<{ de: DataElement; reqs: EvidenceRequirement[] }> = [];
+    const seen = new Set<string>();
+    for (const section of sections) {
+      for (const group of section.groups) {
+        for (const { de } of group.elements) {
+          if (seen.has(de.id)) continue;
+          const reqs = reqsByDe.get(de.id);
+          if (reqs && reqs.length > 0) {
+            out.push({ de, reqs });
+            seen.add(de.id);
+          }
+        }
+      }
+    }
+    return out;
+  }, [sections, reqsByDe]);
+
+  const evidenceMissing = useMemo(
+    () =>
+      evidenceElements
+        .filter(({ de, reqs }) =>
+          reqs.some(
+            (r) =>
+              r.isRequired &&
+              !(mediaByDe.get(de.id) ?? []).some(
+                (m) => m.evidenceType === r.evidenceType,
+              ),
+          ),
+        )
+        .map(({ de }) => de.name),
+    [evidenceElements, mediaByDe],
+  );
+
   const errors = failing.filter((r) => r.severity === 'error');
   const warnings = failing.filter((r) => r.severity === 'warning');
 
@@ -641,6 +723,26 @@ export function EnterData() {
                 ))}
               </section>
             ))}
+
+            {evidenceElements.length > 0 ? (
+              <section className="mb-6" data-testid="evidence-section">
+                <h2 className="small-caps mb-1.5 font-medium text-ink-muted">evidence</h2>
+                {evidenceElements.map(({ de, reqs }) => (
+                  <div key={de.id} className="border-b border-hairline py-2">
+                    <p className="text-sm font-medium">{de.name}</p>
+                    <EvidencePanel
+                      dataElementId={de.id}
+                      programId={programId}
+                      submissionId={
+                        (model.submission as { id?: string } | undefined)?.id ?? null
+                      }
+                      requirements={reqs}
+                      media={mediaByDe.get(de.id) ?? []}
+                    />
+                  </div>
+                ))}
+              </section>
+            ) : null}
           </div>
 
           <aside className="text-sm">
@@ -682,10 +784,16 @@ export function EnterData() {
                   </ul>
                 </div>
               ) : null}
+              {evidenceMissing.length > 0 ? (
+                <p className="text-[12px] text-offtrack" data-testid="evidence-missing">
+                  ▲ required evidence missing: {evidenceMissing.join(', ')}
+                </p>
+              ) : null}
               <Button
                 variant="primary"
                 className="w-full justify-center"
                 onClick={() => setCompleteOpen(true)}
+                disabled={evidenceMissing.length > 0}
               >
                 Mark complete…
               </Button>

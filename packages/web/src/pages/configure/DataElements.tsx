@@ -2,11 +2,14 @@ import { useState } from 'react';
 import {
   AGGREGATION_OPS,
   DEFAULT_CATEGORY_COMBO_ID,
+  EVIDENCE_TYPES,
   VALUE_TYPES,
   type DataElement,
+  type EvidenceType,
 } from '@dodo/shared';
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogClose,
   DialogContent,
@@ -155,12 +158,109 @@ function DataElementForm({
   );
 }
 
+/** Evidence requirements attached to a data element (spec §16.3). */
+function EvidenceManager({ element }: { element: DataElement }) {
+  const list = useEntityList('evidenceRequirements');
+  const { create, remove } = useEntityMutations('evidenceRequirements');
+  const reqs = (list.data ?? []).filter((r) => r.dataElementId === element.id);
+
+  const [evidenceType, setEvidenceType] = useState<EvidenceType>('photo');
+  const [isRequired, setIsRequired] = useState(false);
+  const [instructions, setInstructions] = useState('');
+
+  function add() {
+    void create
+      .mutateAsync({
+        dataElementId: element.id,
+        evidenceType,
+        isRequired,
+        instructions: instructions || null,
+      })
+      .then(() => {
+        setInstructions('');
+        setIsRequired(false);
+      })
+      .catch(() => {});
+  }
+
+  return (
+    <div className="mt-4 space-y-4">
+      {reqs.length === 0 ? (
+        <EmptyHint>
+          No evidence required. Add a requirement (photo, GPS, document…) and field
+          workers will be prompted to capture it during data entry.
+        </EmptyHint>
+      ) : (
+        <Table>
+          <THead>
+            <Tr>
+              <Th>Type</Th>
+              <Th>Required</Th>
+              <Th>Instructions</Th>
+              <Th />
+            </Tr>
+          </THead>
+          <TBody>
+            {reqs.map((r) => (
+              <Tr key={r.id}>
+                <Td className="small-caps">{r.evidenceType}</Td>
+                <Td className="text-ink-muted">{r.isRequired ? 'yes' : 'no'}</Td>
+                <Td className="text-ink-muted">{r.instructions ?? '—'}</Td>
+                <Td className="text-right">
+                  <Button size="sm" variant="ghost" onClick={() => remove.mutate(r.id)}>
+                    Delete
+                  </Button>
+                </Td>
+              </Tr>
+            ))}
+          </TBody>
+        </Table>
+      )}
+      <div className="space-y-2 border-t border-hairline pt-3">
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Type">
+            <Select
+              value={evidenceType}
+              onChange={(e) => setEvidenceType(e.target.value as EvidenceType)}
+            >
+              {EVIDENCE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Instructions">
+            <Input
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+              placeholder="e.g. photograph the completed work"
+            />
+          </Field>
+        </div>
+        <div className="flex items-center justify-between">
+          <Checkbox
+            label="Required to mark complete"
+            checked={isRequired}
+            onChange={(e) => setIsRequired(e.target.checked)}
+          />
+          <Button variant="primary" size="sm" onClick={add} disabled={create.isPending}>
+            Add requirement
+          </Button>
+        </div>
+        <ErrorNote error={create.error ?? remove.error} />
+      </div>
+    </div>
+  );
+}
+
 export function DataElementsPage() {
   const list = useEntityList('dataElements');
   const combos = useEntityList('categoryCombos');
   const { remove } = useEntityMutations('dataElements');
   const [editing, setEditing] = useState<DataElement | null>(null);
   const [open, setOpen] = useState(false);
+  const [evidenceFor, setEvidenceFor] = useState<DataElement | null>(null);
 
   const comboName = (id: string | null) =>
     id ? (combos.data?.find((c) => c.id === id)?.name ?? '…') : '—';
@@ -210,6 +310,9 @@ export function DataElementsPage() {
                 <Td className="text-ink-muted">{comboName(de.categoryComboId)}</Td>
                 <Td className="text-ink-muted">{de.unitOfMeasure}</Td>
                 <Td className="text-right">
+                  <Button size="sm" variant="ghost" onClick={() => setEvidenceFor(de)}>
+                    Evidence
+                  </Button>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -236,6 +339,17 @@ export function DataElementsPage() {
           className="w-[min(560px,calc(100vw-2rem))]"
         >
           <DataElementForm element={editing} onDone={() => setOpen(false)} />
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={evidenceFor !== null}
+        onOpenChange={(o) => !o && setEvidenceFor(null)}
+      >
+        <DialogContent
+          title={evidenceFor ? `${evidenceFor.name} — evidence` : ''}
+          className="w-[min(560px,calc(100vw-2rem))]"
+        >
+          {evidenceFor ? <EvidenceManager element={evidenceFor} /> : null}
         </DialogContent>
       </Dialog>
     </section>

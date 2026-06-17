@@ -28,6 +28,7 @@ import type {
   Program,
   ProgramFieldDef,
   ProgramFieldValue,
+  EvidenceRequirement,
   Role,
   User,
 } from '@dodo/shared';
@@ -57,6 +58,10 @@ export const ENTITIES = {
   optionSets: { table: 'optionSets', path: '/api/metadata/option-sets' },
   options: { table: 'options', path: '/api/metadata/options' },
   dataElements: { table: 'dataElements', path: '/api/metadata/data-elements' },
+  evidenceRequirements: {
+    table: 'evidenceRequirements',
+    path: '/api/metadata/evidence-requirements',
+  },
   datasets: { table: 'datasets', path: '/api/metadata/datasets' },
   roles: { table: 'roles', path: '/api/metadata/roles' },
   validationRules: {
@@ -89,6 +94,7 @@ export interface EntityTypes {
   optionSets: OptionSet;
   options: Option;
   dataElements: DataElement;
+  evidenceRequirements: EvidenceRequirement;
   datasets: Dataset;
   roles: Role;
   users: User;
