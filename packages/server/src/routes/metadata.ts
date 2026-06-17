@@ -1,7 +1,8 @@
 // /api/metadata — route → zod validate → service → drizzle (CLAUDE.md).
 import type { FastifyInstance } from 'fastify';
+import { eq } from 'drizzle-orm';
 import { z, type ZodTypeAny } from 'zod';
-import { parseExpression } from '@dodo/shared';
+import { parseExpression, uuidv7 } from '@dodo/shared';
 import {
   categoryInputSchema,
   categoryOptionInputSchema,
@@ -18,6 +19,11 @@ import {
   programFieldValueInputSchema,
   evidenceRequirementInputSchema,
   ragConfigInputSchema,
+  frameworkInputSchema,
+  frameworkLevelInputSchema,
+  frameworkNodeInputSchema,
+  indicatorFrameworkMappingInputSchema,
+  frameworkDisaggFilterInputSchema,
   dashboardInputSchema,
   indicatorInputSchema,
   resultsFrameworkInputSchema,
@@ -40,6 +46,11 @@ import {
   programFieldValue,
   evidenceRequirement,
   ragConfig,
+  framework,
+  frameworkLevel,
+  frameworkNode,
+  indicatorFrameworkMapping,
+  frameworkDisaggFilter,
   role,
   dataElement,
   indicator,
@@ -133,6 +144,67 @@ export function registerMetadataRoutes(app: FastifyInstance, db: Db) {
     ragConfigInputSchema.partial(),
     simple(ragConfig, 'rag config'),
   );
+
+  // multi-framework (spec §16.7 / §17). framework/level/node are standard
+  // metadata; the mapping + disagg filter are append-only (GET/POST/DELETE).
+  crudRoutes(
+    'frameworks',
+    frameworkInputSchema,
+    frameworkInputSchema.partial(),
+    simple(framework, 'framework'),
+  );
+  crudRoutes(
+    'framework-levels',
+    frameworkLevelInputSchema,
+    frameworkLevelInputSchema.partial(),
+    simple(frameworkLevel, 'framework level'),
+  );
+  crudRoutes(
+    'framework-nodes',
+    frameworkNodeInputSchema,
+    frameworkNodeInputSchema.partial(),
+    simple(frameworkNode, 'framework node'),
+  );
+
+  app.get('/api/metadata/indicator-framework-mappings', read, async () =>
+    db.select().from(indicatorFrameworkMapping),
+  );
+  app.post('/api/metadata/indicator-framework-mappings', write, async (req, reply) => {
+    const input = indicatorFrameworkMappingInputSchema.parse(req.body);
+    const [row] = await db
+      .insert(indicatorFrameworkMapping)
+      .values({ ...input, id: uuidv7() })
+      .returning();
+    return reply.code(201).send(row);
+  });
+  app.delete(
+    '/api/metadata/indicator-framework-mappings/:id',
+    write,
+    async (req, reply) => {
+      const { id } = idParam.parse(req.params);
+      await db
+        .delete(indicatorFrameworkMapping)
+        .where(eq(indicatorFrameworkMapping.id, id));
+      return reply.code(204).send();
+    },
+  );
+
+  app.get('/api/metadata/framework-disagg-filters', read, async () =>
+    db.select().from(frameworkDisaggFilter),
+  );
+  app.post('/api/metadata/framework-disagg-filters', write, async (req, reply) => {
+    const input = frameworkDisaggFilterInputSchema.parse(req.body);
+    const [row] = await db
+      .insert(frameworkDisaggFilter)
+      .values({ ...input, id: uuidv7() })
+      .returning();
+    return reply.code(201).send(row);
+  });
+  app.delete('/api/metadata/framework-disagg-filters/:id', write, async (req, reply) => {
+    const { id } = idParam.parse(req.params);
+    await db.delete(frameworkDisaggFilter).where(eq(frameworkDisaggFilter.id, id));
+    return reply.code(204).send();
+  });
   crudRoutes(
     'org-unit-levels',
     orgUnitLevelInputSchema,

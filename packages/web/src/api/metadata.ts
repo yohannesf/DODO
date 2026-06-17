@@ -30,6 +30,11 @@ import type {
   ProgramFieldValue,
   EvidenceRequirement,
   RagConfig,
+  Framework,
+  FrameworkLevel,
+  FrameworkNode,
+  IndicatorFrameworkMapping,
+  FrameworkDisaggFilter,
   Role,
   User,
 } from '@dodo/shared';
@@ -78,6 +83,20 @@ export const ENTITIES = {
   targets: { table: 'targets', path: '/api/metadata/targets' },
   dashboards: { table: 'dashboards', path: '/api/metadata/dashboards' },
   ragConfigs: { table: 'ragConfigs', path: '/api/metadata/rag-configs' },
+  frameworks: { table: 'frameworks', path: '/api/metadata/frameworks' },
+  frameworkLevels: {
+    table: 'frameworkLevels',
+    path: '/api/metadata/framework-levels',
+  },
+  frameworkNodes: { table: 'frameworkNodes', path: '/api/metadata/framework-nodes' },
+  indicatorMappings: {
+    table: 'indicatorMappings',
+    path: '/api/metadata/indicator-framework-mappings',
+  },
+  frameworkDisaggFilters: {
+    table: 'frameworkDisaggFilters',
+    path: '/api/metadata/framework-disagg-filters',
+  },
   webhooks: { table: 'webhooks', path: '/api/metadata/webhooks' },
   users: { table: 'users', path: '/api/metadata/users' },
 } as const satisfies Record<string, EntityConfig>;
@@ -107,6 +126,11 @@ export interface EntityTypes {
   targets: Target;
   dashboards: Dashboard;
   ragConfigs: RagConfig;
+  frameworks: Framework;
+  frameworkLevels: FrameworkLevel;
+  frameworkNodes: FrameworkNode;
+  indicatorMappings: IndicatorFrameworkMapping;
+  frameworkDisaggFilters: FrameworkDisaggFilter;
   webhooks: Webhook;
 }
 

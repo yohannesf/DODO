@@ -705,6 +705,86 @@ describe('files and media (spec §16.3)', () => {
   });
 });
 
+describe('multi-framework crud (spec §16.7)', () => {
+  it('creates framework, levels, nodes, mapping, disagg filter, and target link', async () => {
+    const prog = await post('/api/metadata/programs', {
+      name: 'FW Prog',
+      code: 'FWPROG',
+    });
+    const ind = await post('/api/metadata/indicators', {
+      name: 'FW Ind',
+      code: 'FW-IND',
+      numeratorExpr: '#{X}',
+      denominatorExpr: '1',
+      indicatorType: 'number',
+    });
+    const cat = await post('/api/metadata/categories', {
+      name: 'FW Sex',
+      code: 'FW-SEX',
+    });
+
+    const fw = await post('/api/metadata/frameworks', {
+      programId: prog.body.id,
+      name: 'USAID RF',
+      isInternal: false,
+    });
+    expect(fw.status).toBe(201);
+    const level = await post('/api/metadata/framework-levels', {
+      frameworkId: fw.body.id,
+      name: 'Development Objective',
+      levelOrder: 1,
+    });
+    expect(level.status).toBe(201);
+    const node = await post('/api/metadata/framework-nodes', {
+      frameworkId: fw.body.id,
+      levelId: level.body.id,
+      title: 'DO 1',
+    });
+    expect(node.status).toBe(201);
+
+    const mapping = await post('/api/metadata/indicator-framework-mappings', {
+      indicatorId: ind.body.id,
+      nodeId: node.body.id,
+      isPrimary: true,
+    });
+    expect(mapping.status).toBe(201);
+    // UNIQUE (indicator_id, node_id)
+    const dup = await post('/api/metadata/indicator-framework-mappings', {
+      indicatorId: ind.body.id,
+      nodeId: node.body.id,
+    });
+    expect(dup.status).toBe(409);
+
+    const filter = await post('/api/metadata/framework-disagg-filters', {
+      mappingId: mapping.body.id,
+      categoryId: cat.body.id,
+      allowedOptionIds: [],
+    });
+    expect(filter.status).toBe(201);
+
+    const fws = await get('/api/metadata/frameworks');
+    expect(fws.body.some((f: { id: string }) => f.id === fw.body.id)).toBe(true);
+
+    // a framework-specific target (spec §16.8)
+    const ou = await get('/api/metadata/org-units');
+    const t = await post('/api/metadata/targets', {
+      indicatorId: ind.body.id,
+      orgUnitId: ou.body[0].id,
+      period: '2026-01',
+      value: 1000,
+      kind: 'target',
+      frameworkMappingId: mapping.body.id,
+    });
+    expect(t.status).toBe(201);
+    expect(t.body.frameworkMappingId).toBe(mapping.body.id);
+
+    // append-only delete (filter has nothing referencing it)
+    expect(
+      (await del(`/api/metadata/framework-disagg-filters/${filter.body.id}`)).status,
+    ).toBe(204);
+  });
+});
+
 describe('shapefile import (spec §16.6)', () => {
   it('lists features and applies a selected subset to org units', async () => {
     const prog = await post('/api/metadata/programs', {
