@@ -677,6 +677,12 @@ export const target = pgTable(
     period: text('period').notNull(),
     value: doublePrecision('value').notNull(),
     kind: targetKindEnum('kind').notNull(),
+    // multi-framework extension (spec §16.8): null framework_mapping_id =
+    // project-wide target (existing behaviour); set = donor-framework-specific.
+    frameworkMappingId: uuid('framework_mapping_id').references(
+      () => indicatorFrameworkMapping.id,
+    ),
+    assignedToId: uuid('assigned_to_id').references(() => orgUnit.id),
   },
   (t) => [
     uniqueIndex('target_key_live')

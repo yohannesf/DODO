@@ -604,6 +604,9 @@ export const targetInputSchema = z.object({
   period: z.string().min(4),
   value: z.number().finite(),
   kind: targetKindSchema,
+  // multi-framework extension (spec §16.8); both null = project-wide target
+  frameworkMappingId: z.string().uuid().nullable().default(null),
+  assignedToId: z.string().uuid().nullable().default(null),
 });
 export const targetSchema = targetInputSchema.extend(metaFieldsSchema.shape);
 export type Target = z.infer<typeof targetSchema>;

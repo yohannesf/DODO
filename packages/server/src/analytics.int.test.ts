@@ -473,3 +473,26 @@ describe('API keys (spec §16.5)', () => {
     expect((await withKey('/api/analytics/rag')).statusCode).toBe(429);
   });
 });
+
+describe('target framework extension (spec §16.8)', () => {
+  it('accepts assigned_to_id; framework_mapping_id defaults to null', async () => {
+    const ind = await api('POST', '/api/metadata/indicators', {
+      name: 'Target ext ind',
+      code: 'AN-TGT-EXT',
+      numeratorExpr: '#{AN-BOREHOLES}',
+      denominatorExpr: '1',
+      indicatorType: 'number',
+      decimals: 0,
+    });
+    const t = await api('POST', '/api/metadata/targets', {
+      indicatorId: ind.id,
+      orgUnitId: d1Id,
+      period: '2026-01',
+      value: 50,
+      kind: 'target',
+      assignedToId: d1Id,
+    });
+    expect(t.assignedToId).toBe(d1Id);
+    expect(t.frameworkMappingId).toBeNull();
+  });
+});
