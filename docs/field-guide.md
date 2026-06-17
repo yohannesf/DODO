@@ -25,6 +25,25 @@ wherever you are; it reaches the server when you next have connectivity.
 4. When the form is done, **Mark complete** (or `Ctrl+S`). The summary shows
    filled/required cells and any failed checks before you confirm.
 
+Some questions are disaggregated as a **tree** (for example a service ladder
+with an "overall" column and breakdowns beneath it) — the grid indents the
+child columns under their parent; enter each as its own cell.
+
+## Evidence (photos, GPS, files)
+
+Some questions ask for proof. When they do, an **attachments** panel appears
+under that row:
+
+- **Camera** takes (or chooses) a photo; **mic** records audio; **file** picks
+  a document; **GPS** stamps your current location (allow location access when
+  the browser asks).
+- Capture works fully offline — attachments are stored on the device and
+  upload on the next sync. The panel shows how many are attached.
+- If evidence is **required**, **Mark complete** is blocked until you add it,
+  with a message saying what's missing.
+- Large queues: if pending uploads exceed ~50 MB you'll see a size warning —
+  sync when you have a good connection to clear them.
+
 ## Sync
 
 The chip in the header always tells the truth:

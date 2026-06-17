@@ -39,6 +39,9 @@ totals, per-section completeness, and a **Mark complete** flow that runs every
 validation rule. Values save to the device instantly — there is no save
 button. Closed and future periods cannot be selected (the period stepper is
 bounded by the dataset's frequency, `open future periods`, and `expiry days`).
+Where a data element requires evidence, an attachments panel under its row
+captures a photo, GPS fix, audio clip, or file — held on the device and
+uploaded with the next sync.
 
 (Pictured at the top of this page.)
 
