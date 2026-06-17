@@ -1,6 +1,43 @@
 # Changelog
 
-## Unreleased
+## v0.2.0 — Multi-framework, media & exports (2026-06-17)
+
+The v0.2.0 feature set (planning/DODO-SPEC-v0.2.0.md), in three phases — every
+change additive or a structured migration; sync/offline architecture unchanged.
+
+**Phase 1 — additive:**
+
+- Nested disaggregation: `category_option.parent_id`; the entry grid renders the
+  option tree when depth > 1.
+- Programs expanded to project containers (status, currency, fiscal year,
+  start/end dates, metadata) with custom field definitions + values.
+- Media & evidence: `evidence_requirement` + `media_file`; `/api/files` and
+  `/api/media-files` (built from scratch); offline photo/audio/file/GPS capture
+  queued in an uploads outbox and pushed two-step (file upload → metadata row).
+- Configurable RAG: `rag_config` (synced) + server-only `rag_log`; a
+  most-specific-wins scope lookup chain; `/api/analytics/rag[/recalculate]`.
+- API keys: `Authorization: Bearer dodo_…` with per-key endpoint scope and an
+  in-memory sliding-window rate limit; `/api/admin/api-keys`.
+- Selective shapefile import into org units; `/api/admin/shapefile-imports`.
+
+**Phase 2 — multi-framework:**
+
+- Configurable frameworks: multiple per program, custom level names, one
+  indicator mapped into several frameworks, per-mapping disaggregation filters,
+  and per-framework targets (`target.framework_mapping_id`).
+- One-time `rf_node → framework` migration (`pnpm migrate:rf`); the v0.1
+  results-framework tables are renamed `_deprecated_*` (dropped in v0.3.0).
+- Framework builder page; the results-framework view gains a framework selector
+  and indicator RAG dots.
+
+**Phase 3 — export templates:**
+
+- Donor-template fill-in and generated Excel/CSV/JSON exports via `exceljs`;
+  in-process export jobs; `node-cron` scheduled exports; `/api/export/*`; the
+  Export Templates configure page.
+
+New runtime dependencies (all permissive): `@fastify/multipart`, `shapefile`,
+`exceljs`, `node-cron`.
 
 Visual redesign — "Field Instrument" (look and feel only; data model, sync,
 routing, and business logic unchanged):

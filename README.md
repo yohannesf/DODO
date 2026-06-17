@@ -80,18 +80,24 @@ comfortable density toggle.
 
 ### 6. Framework
 
-The results framework — a Goal → Outcome → Output → Activity tree that
-indicators hang from, with targets and baselines per org unit. This is the
+Results frameworks — trees that indicators hang from, with targets and
+baselines per org unit. v0.2.0 adds **multiple configurable frameworks per
+program** (USAID, BMGF, internal…): custom level names, one indicator mapped
+into several frameworks at once, per-framework disaggregation filters and
+targets, and a RAG dot against each framework's own target. This is the
 structure dashboards and the target-vs-actual colouring on Maps report
 against.
 
 ### 7. Configure
 
-The metadata hub: programs, org-unit hierarchy, disaggregation (categories
-and combos), data elements, indicators, option sets, datasets and their
-forms, validation rules, and users & roles. Metadata is server-authoritative
-and versioned, and the whole configuration exports/imports as a single
-`metadata.json` bundle.
+The metadata hub: programs (project containers with custom fields), org-unit
+hierarchy (with selective shapefile import), disaggregation (categories and
+combos, including nested option trees), data elements (with photo/GPS/document
+evidence requirements), indicators, results frameworks, configurable RAG
+thresholds, option sets, datasets and their forms, export templates (fill a
+donor's own spreadsheet or generate one), API keys, validation rules, and
+users & roles. Metadata is server-authoritative and versioned, and the whole
+configuration exports/imports as a single `metadata.json` bundle.
 
 ![Configure](docs/screenshots/configure.png)
 

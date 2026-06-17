@@ -22,6 +22,12 @@ import {
   dataElement,
   orgUnitLevel,
   program,
+  evidenceRequirement,
+  framework,
+  frameworkLevel,
+  frameworkNode,
+  indicatorFrameworkMapping,
+  exportTemplate,
 } from './db/schema.js';
 import { createOrgUnit, updateOrgUnit } from './services/metadata/org-units.js';
 
@@ -87,7 +93,7 @@ export async function seedDemo(db: Db, adminUser: AuthUser): Promise<void> {
   const categoryOptions = makeCrud(categoryOption, 'category option');
   const dataElements = makeCrud(dataElement, 'data element');
 
-  await programs.create(db, {
+  const wash = await programs.create(db, {
     name: 'WASH',
     code: 'WASH',
     description: 'Water, sanitation and hygiene programme',
@@ -577,8 +583,78 @@ export async function seedDemo(db: Db, adminUser: AuthUser): Promise<void> {
     ],
   });
 
+  // --- v0.2.0 demo additions --------------------------------------------------
+  const programId = wash.id as string;
+
+  // nested disaggregation (spec §16.1): a service ladder with a child option
+  const serviceLevel = await categories.create(db, {
+    name: 'Service level',
+    code: 'SVCLVL',
+  });
+  const safelyManaged = await categoryOptions.create(db, {
+    categoryId: serviceLevel.id as string,
+    name: 'Safely managed',
+    code: 'SVC-SAFE',
+    sortOrder: 0,
+  });
+  await categoryOptions.create(db, {
+    categoryId: serviceLevel.id as string,
+    parentId: safelyManaged.id as string,
+    name: 'Safely managed — National',
+    code: 'SVC-SAFE-NAT',
+    sortOrder: 0,
+  });
+
+  // media evidence requirement (spec §16.3): a required photo on boreholes
+  const evidenceReqs = makeCrud(evidenceRequirement, 'evidence requirement');
+  await evidenceReqs.create(db, {
+    dataElementId: deBoreholes.id as string,
+    evidenceType: 'photo',
+    isRequired: true,
+    instructions: 'Photograph the rehabilitated borehole',
+  });
+
+  // two frameworks (spec §16.7): internal + USAID donor, each mapping boreholes
+  const frameworks = makeCrud(framework, 'framework');
+  const frameworkLevels = makeCrud(frameworkLevel, 'framework level');
+  const frameworkNodes = makeCrud(frameworkNode, 'framework node');
+  for (const [name, isInternal] of [
+    ['WASH internal framework', true],
+    ['USAID Results Framework', false],
+  ] as const) {
+    const fw = await frameworks.create(db, { programId, name, isInternal });
+    const level = await frameworkLevels.create(db, {
+      frameworkId: fw.id as string,
+      name: isInternal ? 'Outcome' : 'Development Objective',
+      levelOrder: 1,
+    });
+    const node = await frameworkNodes.create(db, {
+      frameworkId: fw.id as string,
+      levelId: level.id as string,
+      title: isInternal ? 'Improved water access' : 'DO 1: Resilient communities',
+    });
+    await db.insert(indicatorFrameworkMapping).values({
+      id: uuidv7(),
+      indicatorId: indBoreholes.id as string,
+      nodeId: node.id as string,
+      isPrimary: isInternal,
+    });
+  }
+
+  // one export template (spec §16.11): a generated workbook with a RAG column
+  const exportTemplates = makeCrud(exportTemplate, 'export template');
+  await exportTemplates.create(db, {
+    programId,
+    name: 'Quarterly board report',
+    outputFormat: 'excel',
+    templateType: 'internal',
+    periodType: 'relative',
+    flags: { include_rag: true },
+  });
+
   console.log(
-    `seeded: ${sites.length + 5} org units, 6 data elements, 12 indicators, ${ops.length} values across ${periods.length} months`,
+    `seeded: ${sites.length + 5} org units, 6 data elements, 12 indicators, ${ops.length} values across ${periods.length} months; ` +
+      'plus nested disaggregation, a photo evidence requirement, 2 frameworks, and an export template (v0.2.0)',
   );
 }
 
