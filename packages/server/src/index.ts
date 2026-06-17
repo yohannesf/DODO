@@ -1,9 +1,11 @@
 import { setTimeout as sleep } from 'node:timers/promises';
+import cron from 'node-cron';
 import { buildApp } from './app.js';
 import { bootstrapAdmin } from './bootstrap.js';
 import { loadConfig } from './config.js';
 import { createDb, createPool } from './db/index.js';
 import { runMigrations } from './migrate.js';
+import { runDueSchedules } from './services/export.js';
 
 const config = loadConfig();
 
@@ -49,3 +51,10 @@ const app = await buildApp({
 });
 
 await app.listen({ host: config.HOST, port: config.PORT });
+
+// scheduled export runner (spec §16.12): check every minute for due schedules
+cron.schedule('* * * * *', () => {
+  void runDueSchedules(db, config.FILES_DIR).catch((err) =>
+    console.error('scheduled export run failed', err),
+  );
+});

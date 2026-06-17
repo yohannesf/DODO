@@ -6,18 +6,24 @@ import {
   PostgreSqlContainer,
   type StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql';
+import os from 'node:os';
+import path from 'node:path';
+import ExcelJS from 'exceljs';
 import type { FastifyInstance } from 'fastify';
 import type pg from 'pg';
 import { uuidv7 } from '@dodo/shared';
 import { buildApp } from './app.js';
 import { bootstrapAdmin } from './bootstrap.js';
-import { createDb, createPool } from './db/index.js';
+import { createDb, createPool, type Db } from './db/index.js';
 import { runMigrations } from './migrate.js';
+import { runDueSchedules } from './services/export.js';
 
 let container: StartedPostgreSqlContainer;
 let pool: pg.Pool;
 let app: FastifyInstance;
 let token: string;
+let db: Db;
+const filesDir = path.join(os.tmpdir(), 'dodo-files');
 
 let countryId: string;
 let d1Id: string;
@@ -66,7 +72,7 @@ beforeAll(async () => {
   const uri = container.getConnectionUri();
   await runMigrations(uri);
   pool = createPool(uri);
-  const db = createDb(pool);
+  db = createDb(pool);
   await bootstrapAdmin(db, 'admin-test-password');
   app = await buildApp({
     db,
@@ -494,5 +500,129 @@ describe('target framework extension (spec §16.8)', () => {
     });
     expect(t.assignedToId).toBe(d1Id);
     expect(t.frameworkMappingId).toBeNull();
+  });
+});
+
+describe('export templates (spec §16.11–16.13)', () => {
+  it('fills a donor cell, generates a RAG column, advances schedules', async () => {
+    const prog = await api('POST', '/api/metadata/programs', {
+      name: 'Export Prog',
+      code: 'EXPPROG',
+    });
+    const de = await api('POST', '/api/metadata/data-elements', {
+      name: 'Exp DE',
+      shortName: 'ExpDE',
+      code: 'EXP-DE',
+      valueType: 'INTEGER_ZERO_OR_POSITIVE',
+    });
+    await api('POST', '/api/metadata/datasets', {
+      name: 'Exp DS',
+      code: 'EXP-DS',
+      frequency: 'MONTHLY',
+      programId: prog.id,
+      elements: [{ dataElementId: de.id, sortOrder: 0, section: '', required: false }],
+      orgUnitIds: [d1Id, d2Id],
+    });
+    // 10 @ d1 + 20 @ d2 (distinct cells) → total 30 in the period window
+    await pushValues([
+      { de: de.id, ou: d1Id, pe: '2026-01', value: '10' },
+      { de: de.id, ou: d2Id, pe: '2026-01', value: '20' },
+    ]);
+
+    // upload a donor .xlsx
+    const donorWb = new ExcelJS.Workbook();
+    donorWb.addWorksheet('Donor');
+    const donorBuf = Buffer.from(await donorWb.xlsx.writeBuffer());
+    const boundary = '----expdonor';
+    const body = Buffer.concat([
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="donor.xlsx"\r\n` +
+          'Content-Type: application/octet-stream\r\n\r\n',
+      ),
+      donorBuf,
+      Buffer.from(`\r\n--${boundary}--\r\n`),
+    ]);
+    const up = await app.inject({
+      method: 'POST',
+      url: '/api/files',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': `multipart/form-data; boundary=${boundary}`,
+      },
+      payload: body,
+    });
+    expect(up.statusCode).toBe(201);
+    const donorRef = up.json().fileRef as string;
+
+    const tpl = await api('POST', '/api/export/templates', {
+      programId: prog.id,
+      name: 'Donor template',
+      outputFormat: 'excel',
+      templateType: 'donor',
+      donorFileRef: donorRef,
+      periodType: 'fixed',
+    });
+    await api('POST', '/api/export/template-mappings', {
+      templateId: tpl.id,
+      dodoField: 'data_value.value',
+      donorCellRef: 'C5',
+    });
+    const job = await api('POST', '/api/export/jobs', {
+      templateId: tpl.id,
+      periodStart: '2026-01-01',
+      periodEnd: '2026-01-31',
+    });
+    expect(job.status).toBe('complete');
+
+    const dl = await app.inject({
+      method: 'GET',
+      url: `/api/export/jobs/${job.id}/download`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(dl.statusCode).toBe(200);
+    const outWb = new ExcelJS.Workbook();
+    // `as never`: exceljs's bundled Buffer type vs node 22's Buffer<ArrayBufferLike>
+    await outWb.xlsx.load(dl.rawPayload as never);
+    expect(outWb.worksheets[0]!.getCell('C5').value).toBe(30);
+
+    // generated workbook with a RAG column (flags.include_rag)
+    const tpl2 = await api('POST', '/api/export/templates', {
+      programId: prog.id,
+      name: 'Generated',
+      outputFormat: 'excel',
+      templateType: 'internal',
+      periodType: 'fixed',
+      flags: { include_rag: true },
+    });
+    const job2 = await api('POST', '/api/export/jobs', {
+      templateId: tpl2.id,
+      periodStart: '2026-01-01',
+      periodEnd: '2026-01-31',
+    });
+    const dl2 = await app.inject({
+      method: 'GET',
+      url: `/api/export/jobs/${job2.id}/download`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    const genWb = new ExcelJS.Workbook();
+    await genWb.xlsx.load(dl2.rawPayload as never);
+    const header = genWb.worksheets[0]!.getRow(1).values as unknown[];
+    expect(header).toContain('RAG');
+    expect(header).toContain('Value');
+
+    // scheduled export advances next_run_at after a run
+    const sched = await api('POST', '/api/export/scheduled', {
+      templateId: tpl2.id,
+      frequency: 'quarterly',
+      nextRunAt: '2020-01-01T00:00:00.000Z',
+    });
+    const ran = await runDueSchedules(db, filesDir, new Date('2026-06-16T00:00:00.000Z'));
+    expect(ran).toBeGreaterThanOrEqual(1);
+    const list = await api('GET', '/api/export/scheduled');
+    const updated = list.find((s: { id: string }) => s.id === sched.id);
+    expect(updated.lastRunAt).not.toBeNull();
+    expect(new Date(updated.nextRunAt).getTime()).toBeGreaterThan(
+      new Date('2026-06-16').getTime(),
+    );
   });
 });

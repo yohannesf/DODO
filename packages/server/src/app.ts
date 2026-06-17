@@ -15,6 +15,7 @@ import { registerAnalyticsRoutes } from './routes/analytics.js';
 import { registerOpsRoutes } from './routes/ops.js';
 import { registerFilesRoutes } from './routes/files.js';
 import { registerAdminRoutes } from './routes/admin.js';
+import { registerExportRoutes } from './routes/export.js';
 import rateLimit from '@fastify/rate-limit';
 import { authPlugin } from './plugins/auth.js';
 import { AppError } from './lib/errors.js';
@@ -95,11 +96,9 @@ export async function buildApp(opts: AppOptions) {
     registerAnalyticsRoutes(app, opts.db);
     registerOpsRoutes(app, opts.db);
     registerAdminRoutes(app, opts.db);
-    registerFilesRoutes(
-      app,
-      opts.db,
-      opts.filesDir ?? path.join(os.tmpdir(), 'dodo-files'),
-    );
+    const filesDir = opts.filesDir ?? path.join(os.tmpdir(), 'dodo-files');
+    registerFilesRoutes(app, opts.db, filesDir);
+    registerExportRoutes(app, opts.db, filesDir);
   }
 
   if (opts.webDistDir && fs.existsSync(opts.webDistDir)) {

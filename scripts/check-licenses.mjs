@@ -20,7 +20,11 @@ const ALLOWED = new Set([
 //   OFL-1.1        the self-hosted @fontsource webfonts (Archivo, IBM Plex);
 //                  the SIL Open Font License is the standard font licence and
 //                  imposes no terms on the application that bundles the fonts.
-const EXCEPTIONS = new Set(['Unlicense', 'BlueOak-1.0.0', 'OFL-1.1']);
+//   Zlib           pako ← exceljs (xlsx export, v0.2.0). The zlib licence is an
+//                  OSI-approved permissive non-copyleft licence.
+//   MIT/X11        traverse ← exceljs. X11 is the canonical MIT licence text;
+//                  the "MIT/X11" string is just a non-SPDX spelling of MIT.
+const EXCEPTIONS = new Set(['Unlicense', 'BlueOak-1.0.0', 'OFL-1.1', 'Zlib', 'MIT/X11']);
 for (const e of EXCEPTIONS) ALLOWED.add(e);
 
 // Packages whose manifest omits the license field but whose licensing is
@@ -28,7 +32,9 @@ for (const e of EXCEPTIONS) ALLOWED.add(e);
 //   @mapbox/jsonlint-lines-primitives — fork of zaach/jsonlint (MIT); the
 //   fork ships no license field, the upstream LICENSE applies. Pulled in by
 //   maplibre-gl (BSD-3-Clause).
-const KNOWN_PACKAGES = new Set(['@mapbox/jsonlint-lines-primitives']);
+//   buffers — substack/node-buffers (MIT/X11 upstream, no license field in the
+//   manifest). Pulled in by exceljs → unzipper → binary (xlsx export, v0.2.0).
+const KNOWN_PACKAGES = new Set(['@mapbox/jsonlint-lines-primitives', 'buffers']);
 
 function licenseAllowed(expr) {
   if (ALLOWED.has(expr)) return true;
