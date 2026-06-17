@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { OrgUnit } from '@dodo/shared';
+import type { OrgUnit, ShapefileFeatureItem } from '@dodo/shared';
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogClose,
   DialogContent,
   Field,
   Input,
+  Select,
   TBody,
   Table,
   Td,
@@ -24,6 +26,7 @@ import {
   useEntityMutations,
   type CsvImportReport,
 } from '../../api/metadata';
+import { api } from '../../api/client';
 import { EmptyHint, ErrorNote, SectionTitle } from './common';
 
 function OrgUnitForm({
@@ -232,6 +235,165 @@ function GeoJsonImportDialog({ onDone }: { onDone: () => void }) {
   );
 }
 
+// Selective shapefile import (spec §16.6): upload → feature checklist → apply.
+function ShapefileImportDialog({ onDone }: { onDone: () => void }) {
+  const programs = useEntityList('programs');
+  const qc = useQueryClient();
+  const [step, setStep] = useState<'upload' | 'select'>('upload');
+  const [programId, setProgramId] = useState('');
+  const [orgUnitLevel, setOrgUnitLevel] = useState(1);
+  const [shp, setShp] = useState<File | null>(null);
+  const [dbf, setDbf] = useState<File | null>(null);
+  const [importId, setImportId] = useState<string | null>(null);
+  const [features, setFeatures] = useState<ShapefileFeatureItem[]>([]);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [error, setError] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function upload() {
+    if (!shp || !programId) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const form = new FormData();
+      form.append('shp', shp, shp.name);
+      if (dbf) form.append('dbf', dbf, dbf.name);
+      form.append('programId', programId);
+      form.append('orgUnitLevel', String(orgUnitLevel));
+      const imp = await api.postForm<{ id: string }>(
+        '/api/admin/shapefile-imports',
+        form,
+      );
+      setImportId(imp.id);
+      const res = await api.get<{ features: ShapefileFeatureItem[] }>(
+        `/api/admin/shapefile-imports/${imp.id}/features?pageSize=500`,
+      );
+      setFeatures(res.features);
+      setStep('select');
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function apply() {
+    if (!importId || selected.size === 0) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await api.post(`/api/admin/shapefile-imports/${importId}/apply`, {
+        selectedIds: [...selected],
+      });
+      await qc.invalidateQueries({ queryKey: ['orgUnits'] });
+      onDone();
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (step === 'upload') {
+    return (
+      <div className="mt-4 space-y-3">
+        <Field label="Program">
+          <Select value={programId} onChange={(e) => setProgramId(e.target.value)}>
+            <option value="">choose…</option>
+            {programs.data?.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Org unit level">
+          <Input
+            type="number"
+            min={1}
+            value={orgUnitLevel}
+            onChange={(e) => setOrgUnitLevel(Number(e.target.value))}
+          />
+        </Field>
+        <Field label=".shp file">
+          <input
+            type="file"
+            accept=".shp"
+            onChange={(e) => setShp(e.target.files?.[0] ?? null)}
+          />
+        </Field>
+        <Field label=".dbf file" hint="optional — adds feature names and attributes">
+          <input
+            type="file"
+            accept=".dbf"
+            onChange={(e) => setDbf(e.target.files?.[0] ?? null)}
+          />
+        </Field>
+        <ErrorNote error={error} />
+        <div className="flex justify-end">
+          <Button
+            variant="primary"
+            onClick={upload}
+            disabled={!shp || !programId || busy}
+          >
+            Upload &amp; list features
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const allChecked = features.length > 0 && selected.size === features.length;
+  return (
+    <div className="mt-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-ink-muted">
+          <span className="tnum">{features.length}</span> features ·{' '}
+          <span className="tnum">{selected.size}</span> selected
+        </p>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() =>
+            setSelected(allChecked ? new Set() : new Set(features.map((f) => f.index)))
+          }
+        >
+          {allChecked ? 'Clear' : 'Select all'}
+        </Button>
+      </div>
+      <ul className="max-h-72 overflow-auto border border-hairline">
+        {features.map((f) => (
+          <li
+            key={f.index}
+            className="flex items-center gap-2 border-b border-hairline px-2 py-1 text-sm"
+          >
+            <Checkbox
+              label=""
+              checked={selected.has(f.index)}
+              onChange={(e) =>
+                setSelected((s) => {
+                  const next = new Set(s);
+                  if (e.target.checked) next.add(f.index);
+                  else next.delete(f.index);
+                  return next;
+                })
+              }
+            />
+            <span className="flex-1">{f.name}</span>
+            <span className="small-caps text-ink-faint">{f.geometryType ?? '—'}</span>
+          </li>
+        ))}
+      </ul>
+      <ErrorNote error={error} />
+      <div className="flex justify-end">
+        <Button variant="primary" onClick={apply} disabled={selected.size === 0 || busy}>
+          Create {selected.size} org unit{selected.size === 1 ? '' : 's'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function LevelsEditor() {
   const levels = useEntityList('orgUnitLevels');
   const { create, remove } = useEntityMutations('orgUnitLevels');
@@ -282,9 +444,9 @@ export function OrgUnitsPage() {
   const levels = useEntityList('orgUnitLevels');
   const { remove } = useEntityMutations('orgUnits');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<'create' | 'edit' | 'csv' | 'geojson' | null>(
-    null,
-  );
+  const [dialog, setDialog] = useState<
+    'create' | 'edit' | 'csv' | 'geojson' | 'shapefile' | null
+  >(null);
   const [createUnderSelected, setCreateUnderSelected] = useState(false);
 
   // list is path-ordered from the API → already depth-first
@@ -301,6 +463,7 @@ export function OrgUnitsPage() {
           <div className="flex gap-2">
             <Button onClick={() => setDialog('csv')}>Import CSV…</Button>
             <Button onClick={() => setDialog('geojson')}>Import GeoJSON…</Button>
+            <Button onClick={() => setDialog('shapefile')}>Import shapefile…</Button>
             <Button
               variant="primary"
               onClick={() => {
@@ -417,6 +580,14 @@ export function OrgUnitsPage() {
           className="w-[min(640px,calc(100vw-2rem))]"
         >
           <CsvImportDialog onDone={() => setDialog(null)} />
+        </DialogContent>
+      </Dialog>
+      <Dialog open={dialog === 'shapefile'} onOpenChange={(o) => !o && setDialog(null)}>
+        <DialogContent
+          title="Import shapefile"
+          className="w-[min(560px,calc(100vw-2rem))]"
+        >
+          <ShapefileImportDialog onDone={() => setDialog(null)} />
         </DialogContent>
       </Dialog>
       <Dialog open={dialog === 'geojson'} onOpenChange={(o) => !o && setDialog(null)}>
