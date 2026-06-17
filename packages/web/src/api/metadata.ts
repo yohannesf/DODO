@@ -26,6 +26,8 @@ import type {
   OrgUnit,
   OrgUnitLevel,
   Program,
+  ProgramFieldDef,
+  ProgramFieldValue,
   Role,
   User,
 } from '@dodo/shared';
@@ -39,6 +41,11 @@ export interface EntityConfig {
 
 export const ENTITIES = {
   programs: { table: 'programs', path: '/api/metadata/programs' },
+  programFields: { table: 'programFieldDefs', path: '/api/metadata/program-fields' },
+  programFieldValues: {
+    table: 'programFieldValues',
+    path: '/api/metadata/program-field-values',
+  },
   orgUnitLevels: { table: 'orgUnitLevels', path: '/api/metadata/org-unit-levels' },
   orgUnits: { table: 'orgUnits', path: '/api/metadata/org-units' },
   categories: { table: 'categories', path: '/api/metadata/categories' },
@@ -72,6 +79,8 @@ export type EntityKey = keyof typeof ENTITIES;
 
 export interface EntityTypes {
   programs: Program;
+  programFields: ProgramFieldDef;
+  programFieldValues: ProgramFieldValue;
   orgUnitLevels: OrgUnitLevel;
   orgUnits: OrgUnit;
   categories: Category;
