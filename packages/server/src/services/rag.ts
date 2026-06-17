@@ -156,12 +156,32 @@ export async function recalculateRag(
 
 export async function getRagLog(
   db: Db,
-  filter: { indicatorId?: string; period?: string; orgUnitId?: string },
+  filter: {
+    indicatorId?: string;
+    period?: string;
+    orgUnitId?: string;
+    programId?: string;
+  },
 ): Promise<(typeof ragLog.$inferSelect)[]> {
   const conds = [];
   if (filter.indicatorId) conds.push(eq(ragLog.indicatorId, filter.indicatorId));
   if (filter.period) conds.push(eq(ragLog.period, filter.period));
   if (filter.orgUnitId) conds.push(eq(ragLog.scopeId, filter.orgUnitId));
+  // scope to a program (e.g. an API key scoped to one program) by restricting
+  // to that program's indicators
+  if (filter.programId) {
+    const inds = await db
+      .select({ id: indicator.id })
+      .from(indicator)
+      .where(and(eq(indicator.programId, filter.programId), isNull(indicator.deletedAt)));
+    if (inds.length === 0) return [];
+    conds.push(
+      inArray(
+        ragLog.indicatorId,
+        inds.map((i) => i.id),
+      ),
+    );
+  }
   return conds.length
     ? db
         .select()

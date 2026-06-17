@@ -252,6 +252,43 @@ export const ragLogEntrySchema = z.object({
 });
 export type RagLogEntry = z.infer<typeof ragLogEntrySchema>;
 
+// API keys (spec §16.5).
+export const API_ACCESS_LEVELS = ['read', 'read_write'] as const;
+export const apiAccessLevelSchema = z.enum(API_ACCESS_LEVELS);
+export type ApiAccessLevel = z.infer<typeof apiAccessLevelSchema>;
+
+export const apiKeyInputSchema = z.object({
+  name: nameSchema,
+  programId: z.string().uuid().nullable().default(null),
+  accessLevel: apiAccessLevelSchema.default('read'),
+  allowedEndpoints: z.array(z.string()).nullable().default(null),
+  rateLimitRph: z.number().int().positive().nullable().default(null),
+  webhookUrl: z.string().url().nullable().default(null),
+  webhookEvents: z.array(z.string()).nullable().default(null),
+  expiresAt: z.string().nullable().default(null),
+});
+
+// Row as returned by list/get — never includes key_hash or the raw key.
+export const apiKeySchema = z.object({
+  id: z.string().uuid(),
+  programId: z.string().uuid().nullable(),
+  name: z.string(),
+  accessLevel: apiAccessLevelSchema,
+  allowedEndpoints: z.array(z.string()).nullable(),
+  rateLimitRph: z.number().nullable(),
+  webhookUrl: z.string().nullable(),
+  webhookEvents: z.array(z.string()).nullable(),
+  isActive: z.boolean(),
+  expiresAt: z.string().nullable(),
+  lastUsedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type ApiKey = z.infer<typeof apiKeySchema>;
+
+// POST response — the raw key is shown exactly once.
+export const apiKeyCreatedSchema = apiKeySchema.extend({ rawKey: z.string() });
+export type ApiKeyCreated = z.infer<typeof apiKeyCreatedSchema>;
+
 export const orgUnitLevelInputSchema = z.object({
   level: z.number().int().min(1).max(12),
   name: nameSchema,

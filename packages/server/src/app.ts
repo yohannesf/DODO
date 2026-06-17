@@ -14,6 +14,7 @@ import { registerSyncRoutes } from './routes/sync.js';
 import { registerAnalyticsRoutes } from './routes/analytics.js';
 import { registerOpsRoutes } from './routes/ops.js';
 import { registerFilesRoutes } from './routes/files.js';
+import { registerAdminRoutes } from './routes/admin.js';
 import rateLimit from '@fastify/rate-limit';
 import { authPlugin } from './plugins/auth.js';
 import { AppError } from './lib/errors.js';
@@ -84,6 +85,7 @@ export async function buildApp(opts: AppOptions) {
     });
     await app.register(authPlugin, {
       jwtSecret: opts.jwtSecret ?? 'dodo-dev-secret-not-for-production',
+      db: opts.db,
     });
     // 50 MB cap per uploaded evidence file (spec §16.10 warns >50 MB pending).
     await app.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
@@ -92,6 +94,7 @@ export async function buildApp(opts: AppOptions) {
     registerSyncRoutes(app, opts.db);
     registerAnalyticsRoutes(app, opts.db);
     registerOpsRoutes(app, opts.db);
+    registerAdminRoutes(app, opts.db);
     registerFilesRoutes(
       app,
       opts.db,

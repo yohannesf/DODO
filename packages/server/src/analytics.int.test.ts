@@ -407,3 +407,69 @@ describe('configurable RAG (spec §16.4)', () => {
     expect(recalc.computed[0].configId).toBeNull();
   });
 });
+
+describe('API keys (spec §16.5)', () => {
+  it('reads RAG scoped to the key program, enforcing scope and rate limit', async () => {
+    const prog = await api('POST', '/api/metadata/programs', {
+      name: 'Key Prog',
+      code: 'KEYPROG',
+    });
+    const ind = await api('POST', '/api/metadata/indicators', {
+      name: 'BH for key',
+      code: 'AN-BH-KEY',
+      numeratorExpr: '#{AN-BOREHOLES}',
+      denominatorExpr: '1',
+      indicatorType: 'number',
+      decimals: 0,
+      programId: prog.id,
+    });
+    await api('POST', '/api/metadata/targets', {
+      indicatorId: ind.id,
+      orgUnitId: countryId,
+      period: '2026-01',
+      value: 10,
+      kind: 'target',
+    });
+    await api('POST', '/api/analytics/rag/recalculate', { programId: prog.id });
+
+    // read key scoped to this program, limited to the RAG endpoint, 2 req/hr
+    const created = await api('POST', '/api/admin/api-keys', {
+      name: 'Dashboard poller',
+      programId: prog.id,
+      accessLevel: 'read',
+      allowedEndpoints: ['rag'],
+      rateLimitRph: 2,
+    });
+    expect(created.rawKey).toMatch(/^dodo_/);
+
+    // list never leaks the hash or the raw key
+    const list = await api('GET', '/api/admin/api-keys');
+    const listed = list.find((k: { id: string }) => k.id === created.id);
+    expect(listed.rawKey).toBeUndefined();
+    expect(listed.keyHash).toBeUndefined();
+
+    const withKey = (url: string) =>
+      app.inject({
+        method: 'GET',
+        url,
+        headers: { authorization: `Bearer ${created.rawKey}` },
+      });
+
+    // GET /api/analytics/rag → rows scoped to the key's program
+    const r1 = await withKey('/api/analytics/rag');
+    expect(r1.statusCode).toBe(200);
+    const rows = r1.json() as Array<{ indicatorId: string }>;
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((r) => r.indicatorId === ind.id)).toBe(true);
+
+    // endpoint scope: a non-allowed endpoint is rejected (does not consume rate)
+    const denied = await withKey(
+      `/api/analytics?dx=${ind.id}&ou=${countryId}&pe=2026-01`,
+    );
+    expect(denied.statusCode).toBe(403);
+
+    // rate limit: 2/hr — the third RAG read is 429
+    expect((await withKey('/api/analytics/rag')).statusCode).toBe(200);
+    expect((await withKey('/api/analytics/rag')).statusCode).toBe(429);
+  });
+});

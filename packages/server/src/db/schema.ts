@@ -758,6 +758,30 @@ export const webhook = pgTable('webhook', {
   lastFiredAt: timestamp('last_fired_at', ts),
 });
 
+// API keys (spec §16.5) — server-only (NOT synced). key_hash = sha256 of the
+// raw key, which is shown once at creation. program_id null = instance-wide.
+export const apiKey = pgTable(
+  'api_key',
+  {
+    id: uuid('id').primaryKey(),
+    programId: uuid('program_id').references(() => program.id),
+    name: text('name').notNull(),
+    keyHash: text('key_hash').notNull(),
+    // 'read' | 'read_write'
+    accessLevel: text('access_level').notNull(),
+    allowedEndpoints: jsonb('allowed_endpoints'),
+    rateLimitRph: integer('rate_limit_rph'),
+    webhookUrl: text('webhook_url'),
+    webhookEvents: jsonb('webhook_events'),
+    isActive: boolean('is_active').notNull().default(true),
+    expiresAt: timestamp('expires_at', ts),
+    createdBy: uuid('created_by'),
+    lastUsedAt: timestamp('last_used_at', ts),
+    createdAt: timestamp('created_at', ts).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('api_key_key_hash').on(t.keyHash)],
+);
+
 // Configurable RAG (spec §16.4). rag_config is synced metadata; thresholds are
 // double precision per ADR 005.
 export const ragConfig = pgTable(

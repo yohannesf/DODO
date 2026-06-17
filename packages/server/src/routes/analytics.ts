@@ -61,6 +61,8 @@ export function registerAnalyticsRoutes(app: FastifyInstance, db: Db) {
         indicatorId: q.indicator,
         period: q.period,
         orgUnitId: q.orgUnit,
+        // an API key scoped to a program restricts the result to that program
+        programId: req.apiKey?.programId ?? undefined,
       });
     },
   );
