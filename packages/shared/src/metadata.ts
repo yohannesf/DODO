@@ -328,6 +328,65 @@ export const shapefileApplyBodySchema = z.object({
   parentId: z.string().uuid().nullable().default(null),
 });
 
+// Multi-framework model (spec §16.7).
+export const frameworkInputSchema = z.object({
+  programId: z.string().uuid(),
+  name: nameSchema,
+  description: z.string().max(2000).nullable().default(null),
+  isInternal: z.boolean().default(false),
+});
+export const frameworkSchema = frameworkInputSchema.extend(metaFieldsSchema.shape);
+export type Framework = z.infer<typeof frameworkSchema>;
+
+export const frameworkLevelInputSchema = z.object({
+  frameworkId: z.string().uuid(),
+  name: nameSchema,
+  levelOrder: z.number().int().min(1),
+});
+export const frameworkLevelSchema = frameworkLevelInputSchema.extend(
+  metaFieldsSchema.shape,
+);
+export type FrameworkLevel = z.infer<typeof frameworkLevelSchema>;
+
+export const frameworkNodeInputSchema = z.object({
+  frameworkId: z.string().uuid(),
+  levelId: z.string().uuid(),
+  parentId: z.string().uuid().nullable().default(null),
+  title: nameSchema,
+  code: z.string().max(64).nullable().default(null),
+  description: z.string().max(2000).nullable().default(null),
+  sortOrder: z.number().int().min(0).default(0),
+  budgetCode: z.string().max(64).nullable().default(null),
+});
+export const frameworkNodeSchema = frameworkNodeInputSchema.extend(
+  metaFieldsSchema.shape,
+);
+export type FrameworkNode = z.infer<typeof frameworkNodeSchema>;
+
+// mapping + disagg filter are append-only (id + createdAt, no version/deletedAt)
+export const indicatorFrameworkMappingInputSchema = z.object({
+  indicatorId: z.string().uuid(),
+  nodeId: z.string().uuid(),
+  isPrimary: z.boolean().default(false),
+});
+export const indicatorFrameworkMappingSchema =
+  indicatorFrameworkMappingInputSchema.extend({
+    id: z.string().uuid(),
+    createdAt: z.string(),
+  });
+export type IndicatorFrameworkMapping = z.infer<typeof indicatorFrameworkMappingSchema>;
+
+export const frameworkDisaggFilterInputSchema = z.object({
+  mappingId: z.string().uuid(),
+  categoryId: z.string().uuid(),
+  allowedOptionIds: z.array(z.string().uuid()).default([]),
+});
+export const frameworkDisaggFilterSchema = frameworkDisaggFilterInputSchema.extend({
+  id: z.string().uuid(),
+  createdAt: z.string(),
+});
+export type FrameworkDisaggFilter = z.infer<typeof frameworkDisaggFilterSchema>;
+
 export const orgUnitLevelInputSchema = z.object({
   level: z.number().int().min(1).max(12),
   name: nameSchema,

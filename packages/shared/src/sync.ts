@@ -28,6 +28,11 @@ export const SYNC_COLLECTIONS = [
   'rfNodes',
   'targets',
   'dashboards',
+  'frameworks',
+  'frameworkLevels',
+  'frameworkNodes',
+  'indicatorMappings',
+  'frameworkDisaggFilters',
 ] as const;
 export type SyncCollection = (typeof SYNC_COLLECTIONS)[number];
 

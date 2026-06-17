@@ -96,6 +96,11 @@ export class DodoDb extends Dexie {
   mediaFiles!: Table<Row, string>;
   pendingUploads!: Table<PendingUpload, number>;
   ragConfigs!: Table<Row, string>;
+  frameworks!: Table<Row, string>;
+  frameworkLevels!: Table<Row, string>;
+  frameworkNodes!: Table<Row, string>;
+  indicatorMappings!: Table<Row, string>;
+  frameworkDisaggFilters!: Table<Row, string>;
 
   constructor(name: string) {
     super(name);
@@ -154,6 +159,14 @@ export class DodoDb extends Dexie {
     // v0.2.0 — configurable RAG thresholds (spec §16.4, §18); synced metadata.
     this.version(8).stores({
       ragConfigs: 'id, programId, scopeType, scopeId, version',
+    });
+    // v0.2.0 — multi-framework model (spec §16.7, §18); synced metadata.
+    this.version(9).stores({
+      frameworks: 'id, programId, version',
+      frameworkLevels: 'id, frameworkId, version',
+      frameworkNodes: 'id, frameworkId, parentId, version',
+      indicatorMappings: 'id, indicatorId, nodeId',
+      frameworkDisaggFilters: 'id, mappingId',
     });
   }
 }

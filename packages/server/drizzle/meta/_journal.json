@@ -134,6 +134,13 @@
       "when": 1781300500000,
       "tag": "0018_shapefile-imports",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1781300600000,
+      "tag": "0019_frameworks",
+      "breakpoints": true
     }
   ]
 }

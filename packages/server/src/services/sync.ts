@@ -40,6 +40,11 @@ import {
   evidenceRequirement,
   mediaFile,
   ragConfig,
+  framework,
+  frameworkLevel,
+  frameworkNode,
+  indicatorFrameworkMapping,
+  frameworkDisaggFilter,
   program,
   programFieldDef,
   programFieldValue,
@@ -130,6 +135,9 @@ export async function pull(
     ['programFieldValues', programFieldValue as unknown as typeof program],
     ['evidenceRequirements', evidenceRequirement as unknown as typeof program],
     ['ragConfigs', ragConfig as unknown as typeof program],
+    ['frameworks', framework as unknown as typeof program],
+    ['frameworkLevels', frameworkLevel as unknown as typeof program],
+    ['frameworkNodes', frameworkNode as unknown as typeof program],
     ['orgUnitLevels', orgUnitLevel as unknown as typeof program],
     ['categories', category as unknown as typeof program],
     ['categoryOptions', categoryOption as unknown as typeof program],
@@ -170,6 +178,25 @@ export async function pull(
         .select()
         .from(mediaFile)
         .where(inArray(mediaFile.id, idsBy('mediaFiles'))),
+    );
+  }
+  // mapping + disagg filter are append-only (no deleted_at) — select by id
+  if (idsBy('indicatorMappings').length > 0) {
+    keep(
+      'indicatorMappings',
+      await db
+        .select()
+        .from(indicatorFrameworkMapping)
+        .where(inArray(indicatorFrameworkMapping.id, idsBy('indicatorMappings'))),
+    );
+  }
+  if (idsBy('frameworkDisaggFilters').length > 0) {
+    keep(
+      'frameworkDisaggFilters',
+      await db
+        .select()
+        .from(frameworkDisaggFilter)
+        .where(inArray(frameworkDisaggFilter.id, idsBy('frameworkDisaggFilters'))),
     );
   }
   if (idsBy('categoryCombos').length > 0) {

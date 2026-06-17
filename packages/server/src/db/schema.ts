@@ -758,6 +758,93 @@ export const webhook = pgTable('webhook', {
   lastFiredAt: timestamp('last_fired_at', ts),
 });
 
+// Multi-framework model (spec §16.7) — synced metadata. framework /
+// framework_level / framework_node carry meta columns; the mapping and disagg
+// filter are append-only (no soft delete) — synced via dedicated pull branches.
+export const framework = pgTable(
+  'framework',
+  {
+    ...metaColumns,
+    programId: uuid('program_id')
+      .notNull()
+      .references(() => program.id),
+    name: text('name').notNull(),
+    description: text('description'),
+    isInternal: boolean('is_internal').notNull().default(false),
+  },
+  (t) => [index('framework_program').on(t.programId)],
+);
+
+export const frameworkLevel = pgTable(
+  'framework_level',
+  {
+    ...metaColumns,
+    frameworkId: uuid('framework_id')
+      .notNull()
+      .references(() => framework.id),
+    name: text('name').notNull(),
+    levelOrder: integer('level_order').notNull(),
+  },
+  (t) => [index('framework_level_framework').on(t.frameworkId)],
+);
+
+export const frameworkNode = pgTable(
+  'framework_node',
+  {
+    ...metaColumns,
+    frameworkId: uuid('framework_id')
+      .notNull()
+      .references(() => framework.id),
+    levelId: uuid('level_id')
+      .notNull()
+      .references(() => frameworkLevel.id),
+    // self-reference declared in the migration (like org_unit.parent_id)
+    parentId: uuid('parent_id'),
+    title: text('title').notNull(),
+    code: text('code'),
+    description: text('description'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    budgetCode: text('budget_code'),
+  },
+  (t) => [
+    index('framework_node_framework').on(t.frameworkId),
+    index('framework_node_parent').on(t.parentId),
+  ],
+);
+
+export const indicatorFrameworkMapping = pgTable(
+  'indicator_framework_mapping',
+  {
+    id: uuid('id').primaryKey(),
+    indicatorId: uuid('indicator_id')
+      .notNull()
+      .references(() => indicator.id),
+    nodeId: uuid('node_id')
+      .notNull()
+      .references(() => frameworkNode.id),
+    isPrimary: boolean('is_primary').notNull().default(false),
+    createdAt: timestamp('created_at', ts).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('ifm_indicator_node').on(t.indicatorId, t.nodeId)],
+);
+
+export const frameworkDisaggFilter = pgTable(
+  'framework_disagg_filter',
+  {
+    id: uuid('id').primaryKey(),
+    mappingId: uuid('mapping_id')
+      .notNull()
+      .references(() => indicatorFrameworkMapping.id),
+    categoryId: uuid('category_id')
+      .notNull()
+      .references(() => category.id),
+    // empty array = show all options
+    allowedOptionIds: uuid('allowed_option_ids').array().notNull(),
+    createdAt: timestamp('created_at', ts).notNull().defaultNow(),
+  },
+  (t) => [index('fdf_mapping').on(t.mappingId)],
+);
+
 // Shapefile imports (spec §16.6) — server-only admin tooling (NOT synced).
 // raw_features preserves every feature for later re-selection.
 export const shapefileImport = pgTable(
