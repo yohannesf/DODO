@@ -336,3 +336,74 @@ describe('analytics aggregation', () => {
     expect(denied.statusCode).toBe(400);
   });
 });
+
+describe('configurable RAG (spec §16.4)', () => {
+  it('recalculates status against program-scope thresholds', async () => {
+    const prog = await api('POST', '/api/metadata/programs', {
+      name: 'RAG Prog',
+      code: 'RAGPROG',
+    });
+    const ind = await api('POST', '/api/metadata/indicators', {
+      name: 'Boreholes total',
+      code: 'AN-BH-TOTAL',
+      numeratorExpr: '#{AN-BOREHOLES}',
+      denominatorExpr: '1',
+      indicatorType: 'number',
+      decimals: 0,
+      programId: prog.id,
+    });
+    // achieved at country/2026-01 (subtree) = 3 + 2 = 5
+    await api('POST', '/api/metadata/targets', {
+      indicatorId: ind.id,
+      orgUnitId: countryId,
+      period: '2026-01',
+      value: 10,
+      kind: 'target',
+    });
+    // program scope: green ≥ 90, yellow ≥ 40 → 50% achieved lands yellow
+    await api('POST', '/api/metadata/rag-configs', {
+      programId: prog.id,
+      scopeType: 'program',
+      scopeId: prog.id,
+      greenThreshold: 90,
+      yellowThreshold: 40,
+    });
+
+    const recalc = await api('POST', '/api/analytics/rag/recalculate', {
+      indicatorId: ind.id,
+    });
+    expect(recalc.computed).toHaveLength(1);
+    expect(recalc.computed[0].achieved).toBe(5);
+    expect(recalc.computed[0].pct).toBeCloseTo(50);
+    expect(recalc.computed[0].status).toBe('yellow');
+    expect(recalc.computed[0].configId).toBeTruthy();
+
+    const log = await api('GET', `/api/analytics/rag?indicator=${ind.id}`);
+    expect(log).toHaveLength(1);
+    expect(log[0].status).toBe('yellow');
+  });
+
+  it('falls back to the system default (green ≥ 80) when no config matches', async () => {
+    const ind = await api('POST', '/api/metadata/indicators', {
+      name: 'Boreholes total 2',
+      code: 'AN-BH-TOTAL2',
+      numeratorExpr: '#{AN-BOREHOLES}',
+      denominatorExpr: '1',
+      indicatorType: 'number',
+      decimals: 0,
+    });
+    // target 5 → achieved 5 → 100% ≥ 80 default → green; no config → null
+    await api('POST', '/api/metadata/targets', {
+      indicatorId: ind.id,
+      orgUnitId: countryId,
+      period: '2026-01',
+      value: 5,
+      kind: 'target',
+    });
+    const recalc = await api('POST', '/api/analytics/rag/recalculate', {
+      indicatorId: ind.id,
+    });
+    expect(recalc.computed[0].status).toBe('green');
+    expect(recalc.computed[0].configId).toBeNull();
+  });
+});

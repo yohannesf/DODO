@@ -21,6 +21,7 @@ export const SYNC_COLLECTIONS = [
   'submissions',
   'evidenceRequirements',
   'mediaFiles',
+  'ragConfigs',
   'validationRules',
   'indicators',
   'resultsFrameworks',

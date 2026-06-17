@@ -296,6 +296,7 @@ async function applyPullPage(page: PullResponse): Promise<void> {
     db.dashboards,
     db.evidenceRequirements,
     db.mediaFiles,
+    db.ragConfigs,
     db.outbox,
     db.syncState,
   ];

@@ -17,6 +17,7 @@ import {
   programFieldDefInputSchema,
   programFieldValueInputSchema,
   evidenceRequirementInputSchema,
+  ragConfigInputSchema,
   dashboardInputSchema,
   indicatorInputSchema,
   resultsFrameworkInputSchema,
@@ -38,6 +39,7 @@ import {
   programFieldDef,
   programFieldValue,
   evidenceRequirement,
+  ragConfig,
   role,
   dataElement,
   indicator,
@@ -124,6 +126,12 @@ export function registerMetadataRoutes(app: FastifyInstance, db: Db) {
     evidenceRequirementInputSchema,
     evidenceRequirementInputSchema.partial(),
     simple(evidenceRequirement, 'evidence requirement'),
+  );
+  crudRoutes(
+    'rag-configs',
+    ragConfigInputSchema,
+    ragConfigInputSchema.partial(),
+    simple(ragConfig, 'rag config'),
   );
   crudRoutes(
     'org-unit-levels',

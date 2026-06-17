@@ -95,6 +95,7 @@ export class DodoDb extends Dexie {
   evidenceRequirements!: Table<Row, string>;
   mediaFiles!: Table<Row, string>;
   pendingUploads!: Table<PendingUpload, number>;
+  ragConfigs!: Table<Row, string>;
 
   constructor(name: string) {
     super(name);
@@ -149,6 +150,10 @@ export class DodoDb extends Dexie {
       evidenceRequirements: 'id, dataElementId, version',
       mediaFiles: 'id, submissionId, dataValueId, syncStatus',
       pendingUploads: '++localId, mediaFileId, state',
+    });
+    // v0.2.0 — configurable RAG thresholds (spec §16.4, §18); synced metadata.
+    this.version(8).stores({
+      ragConfigs: 'id, programId, scopeType, scopeId, version',
     });
   }
 }

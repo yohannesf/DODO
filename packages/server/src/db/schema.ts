@@ -758,6 +758,59 @@ export const webhook = pgTable('webhook', {
   lastFiredAt: timestamp('last_fired_at', ts),
 });
 
+// Configurable RAG (spec §16.4). rag_config is synced metadata; thresholds are
+// double precision per ADR 005.
+export const ragConfig = pgTable(
+  'rag_config',
+  {
+    ...metaColumns,
+    programId: uuid('program_id')
+      .notNull()
+      .references(() => program.id),
+    // 'program' | 'framework' | 'indicator' | 'category_option'
+    scopeType: text('scope_type').notNull(),
+    scopeId: uuid('scope_id').notNull(),
+    greenThreshold: doublePrecision('green_threshold').notNull().default(80),
+    yellowThreshold: doublePrecision('yellow_threshold').notNull().default(50),
+    // 'pct_of_target' | 'absolute' | 'formula'
+    calcBasis: text('calc_basis').notNull().default('pct_of_target'),
+    formula: text('formula'),
+    appliesFrom: date('applies_from'),
+    appliesTo: date('applies_to'),
+  },
+  (t) => [
+    index('rag_config_program').on(t.programId),
+    index('rag_config_scope').on(t.scopeType, t.scopeId),
+  ],
+);
+
+// rag_log is server-only (NOT synced, ADR 005): computed RAG status per
+// indicator/target/period, read by dashboards via the analytics API.
+export const ragLog = pgTable(
+  'rag_log',
+  {
+    id: uuid('id').primaryKey(),
+    indicatorId: uuid('indicator_id')
+      .notNull()
+      .references(() => indicator.id),
+    targetId: uuid('target_id'),
+    dataValueId: uuid('data_value_id'),
+    scopeId: uuid('scope_id'),
+    period: text('period').notNull(),
+    achieved: doublePrecision('achieved'),
+    targetVal: doublePrecision('target_val'),
+    pct: doublePrecision('pct'),
+    // 'red' | 'yellow' | 'green'
+    status: text('status').notNull(),
+    configId: uuid('config_id').references(() => ragConfig.id),
+    calculatedAt: timestamp('calculated_at', ts).notNull().defaultNow(),
+  },
+  (t) => [
+    index('rag_log_indicator').on(t.indicatorId),
+    index('rag_log_indicator_period').on(t.indicatorId, t.period),
+  ],
+);
+
 // Evidence requirements per data element (spec §16.3) — synced metadata.
 export const evidenceRequirement = pgTable(
   'evidence_requirement',

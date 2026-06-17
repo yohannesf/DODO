@@ -29,6 +29,7 @@ import type {
   ProgramFieldDef,
   ProgramFieldValue,
   EvidenceRequirement,
+  RagConfig,
   Role,
   User,
 } from '@dodo/shared';
@@ -76,6 +77,7 @@ export const ENTITIES = {
   rfNodes: { table: 'rfNodes', path: '/api/metadata/rf-nodes' },
   targets: { table: 'targets', path: '/api/metadata/targets' },
   dashboards: { table: 'dashboards', path: '/api/metadata/dashboards' },
+  ragConfigs: { table: 'ragConfigs', path: '/api/metadata/rag-configs' },
   webhooks: { table: 'webhooks', path: '/api/metadata/webhooks' },
   users: { table: 'users', path: '/api/metadata/users' },
 } as const satisfies Record<string, EntityConfig>;
@@ -104,6 +106,7 @@ export interface EntityTypes {
   rfNodes: RfNode;
   targets: Target;
   dashboards: Dashboard;
+  ragConfigs: RagConfig;
   webhooks: Webhook;
 }
 

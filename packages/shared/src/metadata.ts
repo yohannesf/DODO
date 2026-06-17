@@ -208,6 +208,50 @@ export const mediaFileSchema = mediaFileInputSchema.extend({
 });
 export type MediaFile = z.infer<typeof mediaFileSchema>;
 
+// Configurable RAG (spec §16.4).
+export const RAG_SCOPE_TYPES = [
+  'program',
+  'framework',
+  'indicator',
+  'category_option',
+] as const;
+export const ragScopeTypeSchema = z.enum(RAG_SCOPE_TYPES);
+export const RAG_CALC_BASES = ['pct_of_target', 'absolute', 'formula'] as const;
+export const ragCalcBasisSchema = z.enum(RAG_CALC_BASES);
+export const RAG_STATUSES = ['red', 'yellow', 'green'] as const;
+export const ragStatusSchema = z.enum(RAG_STATUSES);
+export type RagStatus = z.infer<typeof ragStatusSchema>;
+
+export const ragConfigInputSchema = z.object({
+  programId: z.string().uuid(),
+  scopeType: ragScopeTypeSchema,
+  scopeId: z.string().uuid(),
+  greenThreshold: z.number().default(80),
+  yellowThreshold: z.number().default(50),
+  calcBasis: ragCalcBasisSchema.default('pct_of_target'),
+  formula: z.string().nullable().default(null),
+  appliesFrom: z.string().date().nullable().default(null),
+  appliesTo: z.string().date().nullable().default(null),
+});
+export const ragConfigSchema = ragConfigInputSchema.extend(metaFieldsSchema.shape);
+export type RagConfig = z.infer<typeof ragConfigSchema>;
+
+export const ragLogEntrySchema = z.object({
+  id: z.string().uuid(),
+  indicatorId: z.string().uuid(),
+  targetId: z.string().uuid().nullable(),
+  dataValueId: z.string().uuid().nullable(),
+  scopeId: z.string().uuid().nullable(),
+  period: z.string(),
+  achieved: z.number().nullable(),
+  targetVal: z.number().nullable(),
+  pct: z.number().nullable(),
+  status: ragStatusSchema,
+  configId: z.string().uuid().nullable(),
+  calculatedAt: z.string(),
+});
+export type RagLogEntry = z.infer<typeof ragLogEntrySchema>;
+
 export const orgUnitLevelInputSchema = z.object({
   level: z.number().int().min(1).max(12),
   name: nameSchema,
