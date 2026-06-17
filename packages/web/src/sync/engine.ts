@@ -188,6 +188,84 @@ async function pushOnce(): Promise<boolean> {
   return batch.length === MAX_PUSH_OPS; // there may be more to push
 }
 
+// --- media push (two-step: file upload → metadata row; spec §16.3) ----------
+
+const MAX_MEDIA_PUSH = 20;
+
+interface LocalMediaRow {
+  id: string;
+  programId: string;
+  dataElementId: string;
+  submissionId: string | null;
+  dataValueId: string | null;
+  evidenceType: string;
+  fileRef: string | null;
+  fileName: string | null;
+  fileSizeKb: number | null;
+  mimeType: string | null;
+  geoLat: number | null;
+  geoLng: number | null;
+  geoAccuracyM: number | null;
+  deviceMeta: Record<string, unknown>;
+  capturedAt: string | null;
+  syncStatus: string;
+}
+
+async function pushMediaOnce(): Promise<boolean> {
+  const db = getDb();
+  const pending = (await db.mediaFiles
+    .where('syncStatus')
+    .equals('pending')
+    .limit(MAX_MEDIA_PUSH)
+    .toArray()) as unknown as LocalMediaRow[];
+  if (pending.length === 0) return false;
+
+  for (const m of pending) {
+    try {
+      let fileRef = m.fileRef ?? null;
+      // step 1: upload the captured blob (GPS evidence carries no file)
+      if (!fileRef && m.evidenceType !== 'gps') {
+        const upload = await db.pendingUploads.where('mediaFileId').equals(m.id).first();
+        if (upload) {
+          const form = new FormData();
+          form.append('file', upload.blob, upload.fileName);
+          const res = await api.postForm<{ fileRef: string }>('/api/files', form);
+          fileRef = res.fileRef;
+        }
+      }
+      // step 2: push the media_file metadata row
+      await api.post('/api/media-files', {
+        id: m.id,
+        programId: m.programId,
+        dataElementId: m.dataElementId,
+        submissionId: m.submissionId ?? null,
+        dataValueId: m.dataValueId ?? null,
+        evidenceType: m.evidenceType,
+        fileRef,
+        fileName: m.fileName ?? null,
+        fileSizeKb: m.fileSizeKb ?? null,
+        mimeType: m.mimeType ?? null,
+        thumbnailRef: fileRef,
+        geoLat: m.geoLat ?? null,
+        geoLng: m.geoLng ?? null,
+        geoAccuracyM: m.geoAccuracyM ?? null,
+        deviceMeta: m.deviceMeta ?? {},
+        capturedAt: m.capturedAt ?? null,
+      });
+      await db.mediaFiles.update(m.id, {
+        syncStatus: 'synced',
+        fileRef,
+        syncedAt: new Date().toISOString(),
+        localBlobKey: null,
+      });
+      await db.pendingUploads.where('mediaFileId').equals(m.id).delete();
+    } catch {
+      await db.mediaFiles.update(m.id, { syncStatus: 'failed' });
+    }
+  }
+  return pending.length === MAX_MEDIA_PUSH;
+}
+
 // --- pull -------------------------------------------------------------------
 
 const PROTECTED_TABLES = new Set<SyncCollection>(['dataValues']);
@@ -278,6 +356,9 @@ export async function syncNow(): Promise<void> {
   try {
     while (await pushOnce()) {
       /* drain the outbox in batches */
+    }
+    while (await pushMediaOnce()) {
+      /* drain queued media (file upload → metadata push) */
     }
     await pullOnce();
     await refreshCounters();
