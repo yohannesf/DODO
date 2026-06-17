@@ -605,3 +605,100 @@ describe('metadata bundle', () => {
     expect(cocs.body.length).toBe(9);
   });
 });
+
+describe('files and media (spec §16.3)', () => {
+  it('uploads a file then pushes a media_file row (two-step)', async () => {
+    const prog = await post('/api/metadata/programs', {
+      name: 'Media Prog',
+      code: 'MEDIAPRG',
+    });
+    const de = await post('/api/metadata/data-elements', {
+      name: 'Photo evidence',
+      shortName: 'Photo',
+      code: 'DE-PHOTO',
+      valueType: 'INTEGER_ZERO_OR_POSITIVE',
+    });
+
+    const boundary = '----dodotest';
+    const body =
+      `--${boundary}\r\n` +
+      'Content-Disposition: form-data; name="file"; filename="proof.txt"\r\n' +
+      'Content-Type: text/plain\r\n\r\n' +
+      'borehole-photo-bytes\r\n' +
+      `--${boundary}--\r\n`;
+    const up = await app.inject({
+      method: 'POST',
+      url: '/api/files',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': `multipart/form-data; boundary=${boundary}`,
+      },
+      payload: body,
+    });
+    expect(up.statusCode).toBe(201);
+    const fileRef = up.json().fileRef as string;
+    expect(fileRef).toMatch(/\.txt$/);
+
+    const mediaId = crypto.randomUUID();
+    const media = await post('/api/media-files', {
+      id: mediaId,
+      programId: prog.body.id,
+      dataElementId: de.body.id,
+      evidenceType: 'photo',
+      fileRef,
+      fileName: 'proof.txt',
+      fileSizeKb: 1,
+      mimeType: 'text/plain',
+    });
+    expect(media.status).toBe(201);
+    expect(media.body.syncStatus).toBe('synced');
+    expect(media.body.fileRef).toBe(fileRef);
+
+    // re-push is idempotent on the client-generated id
+    const again = await post('/api/media-files', {
+      id: mediaId,
+      programId: prog.body.id,
+      dataElementId: de.body.id,
+      evidenceType: 'photo',
+      fileRef,
+    });
+    expect(again.status).toBe(201);
+
+    const dl = await app.inject({
+      method: 'GET',
+      url: `/api/files/${fileRef}`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(dl.statusCode).toBe(200);
+    expect(dl.body).toContain('borehole-photo-bytes');
+
+    const list = await get('/api/media-files');
+    expect(list.body.some((m: { id: string }) => m.id === mediaId)).toBe(true);
+  });
+
+  it('stores GPS evidence with coordinates and no file', async () => {
+    const prog = await post('/api/metadata/programs', {
+      name: 'GPS Prog',
+      code: 'GPSPRG',
+    });
+    const de = await post('/api/metadata/data-elements', {
+      name: 'Site location',
+      shortName: 'Loc',
+      code: 'DE-LOC',
+      valueType: 'INTEGER_ZERO_OR_POSITIVE',
+    });
+    const id = crypto.randomUUID();
+    const media = await post('/api/media-files', {
+      id,
+      programId: prog.body.id,
+      dataElementId: de.body.id,
+      evidenceType: 'gps',
+      geoLat: 9.03,
+      geoLng: 38.74,
+      geoAccuracyM: 5,
+    });
+    expect(media.status).toBe(201);
+    expect(media.body.geoLat).toBe(9.03);
+    expect(media.body.fileRef).toBeNull();
+  });
+});

@@ -1,3 +1,5 @@
+import os from 'node:os';
+import path from 'node:path';
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -14,6 +16,9 @@ const envSchema = z.object({
   LOGIN_RATE_LIMIT: z.coerce.number().int().positive().default(10),
   // per-minute requests per IP across the API
   RATE_LIMIT: z.coerce.number().int().positive().default(600),
+  // where uploaded evidence files are stored (spec §16.3, ADR 004); maps to
+  // "object storage" for v0.2.0. Default under the OS temp dir for dev/tests.
+  FILES_DIR: z.string().default(path.join(os.tmpdir(), 'dodo-files')),
 });
 
 export type Config = z.infer<typeof envSchema>;

@@ -45,6 +45,7 @@ const app = await buildApp({
     version: process.env.DODO_VERSION ?? '0.0.0',
   },
   webDistDir: config.WEB_DIST_DIR,
+  filesDir: config.FILES_DIR,
 });
 
 await app.listen({ host: config.HOST, port: config.PORT });

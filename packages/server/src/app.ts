@@ -1,7 +1,9 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
+import multipart from '@fastify/multipart';
 import { ZodError } from 'zod';
 import { healthResponseSchema } from '@dodo/shared';
 import type { Db } from './db/index.js';
@@ -11,6 +13,7 @@ import { registerAuthRoutes } from './routes/auth.js';
 import { registerSyncRoutes } from './routes/sync.js';
 import { registerAnalyticsRoutes } from './routes/analytics.js';
 import { registerOpsRoutes } from './routes/ops.js';
+import { registerFilesRoutes } from './routes/files.js';
 import rateLimit from '@fastify/rate-limit';
 import { authPlugin } from './plugins/auth.js';
 import { AppError } from './lib/errors.js';
@@ -23,6 +26,8 @@ export interface AppOptions {
   rateLimitMax?: number;
   /** Absolute path to the built SPA; when set the server also serves it. */
   webDistDir?: string;
+  /** Where uploaded evidence files are stored (spec §16.3, ADR 004). */
+  filesDir?: string;
   logger?: boolean;
 }
 
@@ -80,11 +85,18 @@ export async function buildApp(opts: AppOptions) {
     await app.register(authPlugin, {
       jwtSecret: opts.jwtSecret ?? 'dodo-dev-secret-not-for-production',
     });
+    // 50 MB cap per uploaded evidence file (spec §16.10 warns >50 MB pending).
+    await app.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
     registerAuthRoutes(app, opts.db, opts.loginRateLimit ?? 10);
     registerMetadataRoutes(app, opts.db);
     registerSyncRoutes(app, opts.db);
     registerAnalyticsRoutes(app, opts.db);
     registerOpsRoutes(app, opts.db);
+    registerFilesRoutes(
+      app,
+      opts.db,
+      opts.filesDir ?? path.join(os.tmpdir(), 'dodo-files'),
+    );
   }
 
   if (opts.webDistDir && fs.existsSync(opts.webDistDir)) {
