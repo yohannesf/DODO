@@ -369,6 +369,7 @@ export function ProgramsPage() {
             <Tr>
               <Th>Name</Th>
               <Th>Code</Th>
+              <Th>Description</Th>
               <Th>Status</Th>
               <Th>Currency</Th>
               <Th />
@@ -379,6 +380,7 @@ export function ProgramsPage() {
               <Tr key={p.id} className="hover:bg-surface">
                 <Td className="font-medium">{p.name}</Td>
                 <Td className="font-mono text-[12px]">{p.code}</Td>
+                <Td className="text-ink-muted">{p.description}</Td>
                 <Td>
                   <span className="small-caps text-ink-muted">
                     {p.active ? `● ${p.status}` : '◌ inactive'}
