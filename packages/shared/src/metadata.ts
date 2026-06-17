@@ -387,6 +387,95 @@ export const frameworkDisaggFilterSchema = frameworkDisaggFilterInputSchema.exte
 });
 export type FrameworkDisaggFilter = z.infer<typeof frameworkDisaggFilterSchema>;
 
+// Export templates (spec §16.11).
+export const EXPORT_FORMATS = ['excel', 'csv', 'pdf', 'json'] as const;
+export const exportFormatSchema = z.enum(EXPORT_FORMATS);
+export const EXPORT_TEMPLATE_TYPES = ['donor', 'internal', 'custom'] as const;
+export const EXPORT_PERIOD_TYPES = ['fixed', 'relative'] as const;
+export const EXPORT_JOB_STATUSES = [
+  'queued',
+  'processing',
+  'complete',
+  'failed',
+] as const;
+export const exportJobStatusSchema = z.enum(EXPORT_JOB_STATUSES);
+export const SCHEDULE_FREQUENCIES = ['monthly', 'quarterly', 'annual'] as const;
+export const DELIVERY_METHODS = ['download', 'email', 'webhook'] as const;
+
+export const exportTemplateInputSchema = z.object({
+  programId: z.string().uuid(),
+  name: nameSchema,
+  description: z.string().max(2000).nullable().default(null),
+  frameworkId: z.string().uuid().nullable().default(null),
+  outputFormat: exportFormatSchema.default('excel'),
+  templateType: z.enum(EXPORT_TEMPLATE_TYPES).default('internal'),
+  donorFileRef: z.string().nullable().default(null),
+  columnConfig: z.record(z.unknown()).default({}),
+  aggregationConfig: z.record(z.unknown()).default({}),
+  periodType: z.enum(EXPORT_PERIOD_TYPES).default('fixed'),
+  flags: z.record(z.unknown()).default({}),
+});
+export const exportTemplateSchema = exportTemplateInputSchema.extend(
+  metaFieldsSchema.shape,
+);
+export type ExportTemplate = z.infer<typeof exportTemplateSchema>;
+
+export const exportTemplateMappingInputSchema = z.object({
+  templateId: z.string().uuid(),
+  dodoField: z.string().min(1).max(200),
+  donorLabel: z.string().max(200).nullable().default(null),
+  donorCellRef: z.string().max(20).nullable().default(null),
+  transform: z.record(z.unknown()).nullable().default(null),
+});
+export const exportTemplateMappingSchema = exportTemplateMappingInputSchema.extend({
+  id: z.string().uuid(),
+  createdAt: z.string(),
+});
+export type ExportTemplateMapping = z.infer<typeof exportTemplateMappingSchema>;
+
+// job create payload (program/status/file derived server-side)
+export const exportJobInputSchema = z.object({
+  templateId: z.string().uuid(),
+  periodStart: z.string().date(),
+  periodEnd: z.string().date(),
+  locationScope: z.string().uuid().nullable().default(null),
+  frameworkScope: z.string().uuid().nullable().default(null),
+});
+export const exportJobSchema = z.object({
+  id: z.string().uuid(),
+  templateId: z.string().uuid(),
+  programId: z.string().uuid(),
+  requestedBy: z.string().uuid().nullable(),
+  status: exportJobStatusSchema,
+  periodStart: z.string(),
+  periodEnd: z.string(),
+  locationScope: z.string().uuid().nullable(),
+  frameworkScope: z.string().uuid().nullable(),
+  fileRef: z.string().nullable(),
+  errorLog: z.unknown().nullable(),
+  rowCount: z.number().nullable(),
+  requestedAt: z.string(),
+  completedAt: z.string().nullable(),
+  expiresAt: z.string().nullable(),
+});
+export type ExportJob = z.infer<typeof exportJobSchema>;
+
+export const scheduledExportInputSchema = z.object({
+  templateId: z.string().uuid(),
+  frequency: z.enum(SCHEDULE_FREQUENCIES),
+  nextRunAt: z.string(),
+  deliveryMethod: z.enum(DELIVERY_METHODS).default('download'),
+  deliveryConfig: z.record(z.unknown()).default({}),
+});
+export const scheduledExportSchema = scheduledExportInputSchema.extend({
+  id: z.string().uuid(),
+  programId: z.string().uuid(),
+  lastRunAt: z.string().nullable(),
+  isActive: z.boolean(),
+  createdAt: z.string(),
+});
+export type ScheduledExport = z.infer<typeof scheduledExportSchema>;
+
 export const orgUnitLevelInputSchema = z.object({
   level: z.number().int().min(1).max(12),
   name: nameSchema,

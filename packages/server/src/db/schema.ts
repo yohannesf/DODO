@@ -851,6 +851,99 @@ export const frameworkDisaggFilter = pgTable(
   (t) => [index('fdf_mapping').on(t.mappingId)],
 );
 
+// Export templates (spec §16.11) — server-only config (NOT synced). Only
+// export_template carries meta columns; the rest are operational rows.
+export const exportTemplate = pgTable(
+  'export_template',
+  {
+    ...metaColumns,
+    programId: uuid('program_id')
+      .notNull()
+      .references(() => program.id),
+    name: text('name').notNull(),
+    description: text('description'),
+    frameworkId: uuid('framework_id').references(() => framework.id),
+    // 'excel' | 'csv' | 'pdf' | 'json'
+    outputFormat: text('output_format').notNull(),
+    // 'donor' | 'internal' | 'custom'
+    templateType: text('template_type').notNull(),
+    donorFileRef: text('donor_file_ref'),
+    columnConfig: jsonb('column_config').notNull().default({}),
+    aggregationConfig: jsonb('aggregation_config').notNull().default({}),
+    // 'fixed' | 'relative'
+    periodType: text('period_type').notNull(),
+    flags: jsonb('flags').notNull().default({}),
+  },
+  (t) => [index('export_template_program').on(t.programId)],
+);
+
+export const exportTemplateMapping = pgTable(
+  'export_template_mapping',
+  {
+    id: uuid('id').primaryKey(),
+    templateId: uuid('template_id')
+      .notNull()
+      .references(() => exportTemplate.id),
+    dodoField: text('dodo_field').notNull(),
+    donorLabel: text('donor_label'),
+    donorCellRef: text('donor_cell_ref'),
+    transform: jsonb('transform'),
+    createdAt: timestamp('created_at', ts).notNull().defaultNow(),
+  },
+  (t) => [index('etm_template').on(t.templateId)],
+);
+
+export const exportJob = pgTable(
+  'export_job',
+  {
+    id: uuid('id').primaryKey(),
+    templateId: uuid('template_id')
+      .notNull()
+      .references(() => exportTemplate.id),
+    programId: uuid('program_id')
+      .notNull()
+      .references(() => program.id),
+    requestedBy: uuid('requested_by'),
+    // 'queued' | 'processing' | 'complete' | 'failed'
+    status: text('status').notNull().default('queued'),
+    periodStart: date('period_start').notNull(),
+    periodEnd: date('period_end').notNull(),
+    locationScope: uuid('location_scope'),
+    frameworkScope: uuid('framework_scope'),
+    fileRef: text('file_ref'),
+    errorLog: jsonb('error_log'),
+    rowCount: integer('row_count'),
+    requestedAt: timestamp('requested_at', ts).notNull().defaultNow(),
+    completedAt: timestamp('completed_at', ts),
+    expiresAt: timestamp('expires_at', ts),
+  },
+  (t) => [index('export_job_template').on(t.templateId)],
+);
+
+export const scheduledExport = pgTable(
+  'scheduled_export',
+  {
+    id: uuid('id').primaryKey(),
+    templateId: uuid('template_id')
+      .notNull()
+      .references(() => exportTemplate.id),
+    programId: uuid('program_id')
+      .notNull()
+      .references(() => program.id),
+    // 'monthly' | 'quarterly' | 'annual'
+    frequency: text('frequency').notNull(),
+    nextRunAt: timestamp('next_run_at', ts).notNull(),
+    lastRunAt: timestamp('last_run_at', ts),
+    // 'download' | 'email' | 'webhook'
+    deliveryMethod: text('delivery_method').notNull(),
+    deliveryConfig: jsonb('delivery_config').notNull().default({}),
+    isActive: boolean('is_active').notNull().default(true),
+    createdBy: uuid('created_by'),
+    createdAt: timestamp('created_at', ts).notNull().defaultNow(),
+  },
+  (t) => [index('scheduled_export_next_run').on(t.nextRunAt)],
+);
+
 // Shapefile imports (spec §16.6) — server-only admin tooling (NOT synced).
 // raw_features preserves every feature for later re-selection.
 export const shapefileImport = pgTable(
