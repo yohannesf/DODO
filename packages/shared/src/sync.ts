@@ -19,6 +19,8 @@ export const SYNC_COLLECTIONS = [
   'datasets',
   'dataValues',
   'submissions',
+  'evidenceRequirements',
+  'mediaFiles',
   'validationRules',
   'indicators',
   'resultsFrameworks',

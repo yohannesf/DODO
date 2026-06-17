@@ -47,6 +47,22 @@ export interface ConflictRow {
   resolvedAt: string | null;
 }
 
+// Client-only outbox for the two-step media push (spec §16.3, ADR 004): the
+// captured blob is held here until the file uploads and the media_file row is
+// pushed; then the entry is removed and the blob freed.
+export interface PendingUpload {
+  localId?: number;
+  mediaFileId: string;
+  blob: Blob;
+  fileName: string;
+  mimeType: string;
+  fileSizeKb: number;
+  state: 'pending' | 'inflight' | 'failed';
+  tries: number;
+  createdAt: string;
+  lastError?: string;
+}
+
 type Row = Record<string, unknown>;
 
 export class DodoDb extends Dexie {
@@ -76,6 +92,9 @@ export class DodoDb extends Dexie {
   targets!: Table<Row, string>;
   dashboards!: Table<Row, string>;
   widgetCache!: Table<{ key: string; data: unknown; fetchedAt: string }, string>;
+  evidenceRequirements!: Table<Row, string>;
+  mediaFiles!: Table<Row, string>;
+  pendingUploads!: Table<PendingUpload, number>;
 
   constructor(name: string) {
     super(name);
@@ -123,6 +142,13 @@ export class DodoDb extends Dexie {
     this.version(6).stores({
       programFieldDefs: 'id, programId',
       programFieldValues: 'id, programId, fieldDefId',
+    });
+    // v0.2.0 — media & evidence (spec §16.3, §18). evidenceRequirements and
+    // mediaFiles are synced; pendingUploads is a client-only file outbox.
+    this.version(7).stores({
+      evidenceRequirements: 'id, dataElementId, version',
+      mediaFiles: 'id, submissionId, dataValueId, syncStatus',
+      pendingUploads: '++localId, mediaFileId, state',
     });
   }
 }

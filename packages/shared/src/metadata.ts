@@ -151,6 +151,63 @@ export const programFieldValueSchema = programFieldValueInputSchema.extend(
 );
 export type ProgramFieldValue = z.infer<typeof programFieldValueSchema>;
 
+// Media & evidence (spec §16.3).
+export const EVIDENCE_TYPES = [
+  'photo',
+  'video',
+  'audio',
+  'document',
+  'gps',
+  'signature',
+] as const;
+export const evidenceTypeSchema = z.enum(EVIDENCE_TYPES);
+export type EvidenceType = z.infer<typeof evidenceTypeSchema>;
+
+export const evidenceRequirementInputSchema = z.object({
+  dataElementId: z.string().uuid(),
+  evidenceType: evidenceTypeSchema,
+  isRequired: z.boolean().default(false),
+  maxCount: z.number().int().min(1).nullable().default(null),
+  maxFileKb: z.number().int().min(1).nullable().default(null),
+  allowedFormats: z.array(z.string()).nullable().default(null),
+  instructions: z.string().max(2000).nullable().default(null),
+});
+export const evidenceRequirementSchema = evidenceRequirementInputSchema.extend(
+  metaFieldsSchema.shape,
+);
+export type EvidenceRequirement = z.infer<typeof evidenceRequirementSchema>;
+
+export const MEDIA_SYNC_STATUSES = ['pending', 'synced', 'failed'] as const;
+
+// The "metadata push" payload (step 2 of the two-step push, ADR 004) — the
+// client posts the row it generated, including its UUIDv7 id and the fileRef
+// returned by POST /api/files (null for GPS evidence).
+export const mediaFileInputSchema = z.object({
+  id: z.string().uuid(),
+  programId: z.string().uuid(),
+  dataElementId: z.string().uuid(),
+  submissionId: z.string().uuid().nullable().default(null),
+  dataValueId: z.string().uuid().nullable().default(null),
+  evidenceType: evidenceTypeSchema,
+  fileRef: z.string().nullable().default(null),
+  fileName: z.string().nullable().default(null),
+  fileSizeKb: z.number().int().nonnegative().nullable().default(null),
+  mimeType: z.string().nullable().default(null),
+  thumbnailRef: z.string().nullable().default(null),
+  geoLat: z.number().nullable().default(null),
+  geoLng: z.number().nullable().default(null),
+  geoAccuracyM: z.number().nullable().default(null),
+  deviceMeta: z.record(z.unknown()).default({}),
+  capturedAt: z.string().nullable().default(null),
+});
+export const mediaFileSchema = mediaFileInputSchema.extend({
+  uploadedBy: z.string().uuid().nullable(),
+  syncStatus: z.enum(MEDIA_SYNC_STATUSES),
+  syncedAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type MediaFile = z.infer<typeof mediaFileSchema>;
+
 export const orgUnitLevelInputSchema = z.object({
   level: z.number().int().min(1).max(12),
   name: nameSchema,

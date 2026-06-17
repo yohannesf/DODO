@@ -757,3 +757,61 @@ export const webhook = pgTable('webhook', {
   lastStatus: integer('last_status'),
   lastFiredAt: timestamp('last_fired_at', ts),
 });
+
+// Evidence requirements per data element (spec §16.3) — synced metadata.
+export const evidenceRequirement = pgTable(
+  'evidence_requirement',
+  {
+    ...metaColumns,
+    dataElementId: uuid('data_element_id')
+      .notNull()
+      .references(() => dataElement.id),
+    // photo | video | audio | document | gps | signature
+    evidenceType: text('evidence_type').notNull(),
+    isRequired: boolean('is_required').notNull().default(false),
+    maxCount: integer('max_count'),
+    maxFileKb: integer('max_file_kb'),
+    allowedFormats: jsonb('allowed_formats'),
+    instructions: text('instructions'),
+  },
+  (t) => [index('evidence_requirement_data_element').on(t.dataElementId)],
+);
+
+// Captured media/evidence (spec §16.3). Client-generated id; no soft-delete or
+// version columns (ADR 004). local_blob_key is client-only and never stored
+// here. Enters the sync stream via the media_file trigger + a dedicated pull
+// branch (the row has no deleted_at, like category_option_combo).
+export const mediaFile = pgTable(
+  'media_file',
+  {
+    id: uuid('id').primaryKey(),
+    programId: uuid('program_id')
+      .notNull()
+      .references(() => program.id),
+    dataElementId: uuid('data_element_id')
+      .notNull()
+      .references(() => dataElement.id),
+    submissionId: uuid('submission_id'),
+    dataValueId: uuid('data_value_id'),
+    evidenceType: text('evidence_type').notNull(),
+    fileRef: text('file_ref'),
+    fileName: text('file_name'),
+    fileSizeKb: integer('file_size_kb'),
+    mimeType: text('mime_type'),
+    thumbnailRef: text('thumbnail_ref'),
+    geoLat: doublePrecision('geo_lat'),
+    geoLng: doublePrecision('geo_lng'),
+    geoAccuracyM: doublePrecision('geo_accuracy_m'),
+    deviceMeta: jsonb('device_meta').notNull().default({}),
+    uploadedBy: uuid('uploaded_by'),
+    syncStatus: text('sync_status').notNull().default('pending'),
+    syncedAt: timestamp('synced_at', ts),
+    capturedAt: timestamp('captured_at', ts),
+    createdAt: timestamp('created_at', ts).notNull().defaultNow(),
+  },
+  (t) => [
+    index('media_file_data_element').on(t.dataElementId),
+    index('media_file_submission').on(t.submissionId),
+    index('media_file_data_value').on(t.dataValueId),
+  ],
+);

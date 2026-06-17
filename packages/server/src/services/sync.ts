@@ -37,6 +37,8 @@ import {
   orgUnit,
   indicator,
   orgUnitLevel,
+  evidenceRequirement,
+  mediaFile,
   program,
   programFieldDef,
   programFieldValue,
@@ -125,6 +127,7 @@ export async function pull(
     ['programs', program],
     ['programFieldDefs', programFieldDef as unknown as typeof program],
     ['programFieldValues', programFieldValue as unknown as typeof program],
+    ['evidenceRequirements', evidenceRequirement as unknown as typeof program],
     ['orgUnitLevels', orgUnitLevel as unknown as typeof program],
     ['categories', category as unknown as typeof program],
     ['categoryOptions', categoryOption as unknown as typeof program],
@@ -155,6 +158,16 @@ export async function pull(
         .select()
         .from(categoryOptionCombo)
         .where(inArray(categoryOptionCombo.id, idsBy('categoryOptionCombos'))),
+    );
+  }
+  // media_file has no deleted_at column (ADR 004) — select by id directly
+  if (idsBy('mediaFiles').length > 0) {
+    keep(
+      'mediaFiles',
+      await db
+        .select()
+        .from(mediaFile)
+        .where(inArray(mediaFile.id, idsBy('mediaFiles'))),
     );
   }
   if (idsBy('categoryCombos').length > 0) {

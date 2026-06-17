@@ -538,6 +538,30 @@ describe('data elements and datasets', () => {
     });
     expect(unknownDe.status).toBe(400);
   });
+
+  it('attaches an evidence requirement to a data element (spec §16.3)', async () => {
+    const req = await post('/api/metadata/evidence-requirements', {
+      dataElementId: deId,
+      evidenceType: 'photo',
+      isRequired: true,
+      maxCount: 3,
+      allowedFormats: ['jpg', 'png'],
+      instructions: 'Photograph the rehabilitated borehole',
+    });
+    expect(req.status).toBe(201);
+    expect(req.body.evidenceType).toBe('photo');
+    expect(req.body.isRequired).toBe(true);
+    expect(req.body.allowedFormats).toEqual(['jpg', 'png']);
+
+    const listed = await get('/api/metadata/evidence-requirements');
+    expect(listed.body.some((r: { id: string }) => r.id === req.body.id)).toBe(true);
+
+    const bad = await post('/api/metadata/evidence-requirements', {
+      dataElementId: deId,
+      evidenceType: 'hologram',
+    });
+    expect(bad.status).toBe(400);
+  });
 });
 
 describe('users and roles', () => {
