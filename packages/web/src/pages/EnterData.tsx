@@ -181,6 +181,16 @@ function useEntryModel(datasetId: string, orgUnitId: string, period: string) {
     () => (hasDb() ? getDb().mediaFiles.toArray() : []),
     [],
   );
+  // total queued upload size (spec §16.10): warn when it grows large
+  const pendingUploadKb = useLiveQuery(
+    () =>
+      hasDb()
+        ? getDb()
+            .pendingUploads.toArray()
+            .then((rows) => rows.reduce((a, r) => a + (r.fileSizeKb ?? 0), 0))
+        : 0,
+    [],
+  );
 
   return {
     datasets,
@@ -195,6 +205,7 @@ function useEntryModel(datasetId: string, orgUnitId: string, period: string) {
     programs,
     evidenceRequirements,
     mediaFiles,
+    pendingUploadKb,
   };
 }
 
@@ -787,6 +798,12 @@ export function EnterData() {
               {evidenceMissing.length > 0 ? (
                 <p className="text-[12px] text-offtrack" data-testid="evidence-missing">
                   ▲ required evidence missing: {evidenceMissing.join(', ')}
+                </p>
+              ) : null}
+              {(model.pendingUploadKb ?? 0) > 50_000 ? (
+                <p className="text-[12px] text-ochre" data-testid="upload-size-warning">
+                  ◌ {Math.round((model.pendingUploadKb ?? 0) / 1024)} MB of attachments
+                  waiting to upload — sync on a good connection.
                 </p>
               ) : null}
               <Button
