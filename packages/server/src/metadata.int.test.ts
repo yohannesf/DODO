@@ -11,19 +11,21 @@ import { DEFAULT_CATEGORY_COMBO_ID } from '@dodo/shared';
 import { buildApp } from './app.js';
 import { bootstrapAdmin } from './bootstrap.js';
 import { createDb, createPool } from './db/index.js';
+import { shapefileImport } from './db/schema.js';
 import { runMigrations } from './migrate.js';
 
 let container: StartedPostgreSqlContainer;
 let pool: pg.Pool;
 let app: FastifyInstance;
 let token: string;
+let db: ReturnType<typeof createDb>;
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer('postgis/postgis:16-3.5').start();
   const uri = container.getConnectionUri();
   await runMigrations(uri);
   pool = createPool(uri);
-  const db = createDb(pool);
+  db = createDb(pool);
   await bootstrapAdmin(db, 'admin-test-password');
   app = await buildApp({
     db,
@@ -700,5 +702,53 @@ describe('files and media (spec §16.3)', () => {
     expect(media.status).toBe(201);
     expect(media.body.geoLat).toBe(9.03);
     expect(media.body.fileRef).toBeNull();
+  });
+});
+
+describe('shapefile import (spec §16.6)', () => {
+  it('lists features and applies a selected subset to org units', async () => {
+    const prog = await post('/api/metadata/programs', {
+      name: 'Geo Prog',
+      code: 'GEOPROG',
+    });
+    const importId = crypto.randomUUID();
+    // seed a completed import directly (the binary shp/dbf parse is exercised
+    // manually/e2e; this covers feature listing → selective apply → re-open)
+    const features = Array.from({ length: 5 }, (_, i) => ({
+      type: 'Feature' as const,
+      geometry: { type: 'Point', coordinates: [38 + i, 9 + i] },
+      properties: { NAME: `Zone ${i + 1}` },
+    }));
+    await db.insert(shapefileImport).values({
+      id: importId,
+      programId: prog.body.id,
+      orgUnitLevel: 1,
+      fileName: 'zones.shp',
+      fileRef: 'zones.shp',
+      rawFeatures: { type: 'FeatureCollection', features },
+      status: 'complete',
+    });
+
+    const list1 = await get(`/api/admin/shapefile-imports/${importId}/features`);
+    expect(list1.body.total).toBe(5);
+    expect(list1.body.features[0].name).toBe('Zone 1');
+    expect(list1.body.features[0].geometryType).toBe('Point');
+
+    const applied = await post(`/api/admin/shapefile-imports/${importId}/apply`, {
+      selectedIds: [0, 1, 2],
+    });
+    expect(applied.status).toBe(200);
+    expect(applied.body.created).toBe(3);
+
+    const ous = await get('/api/metadata/org-units');
+    const imported = ous.body.filter((o: { code: string }) =>
+      o.code.startsWith(`IMP-${importId.slice(0, 8)}`),
+    );
+    expect(imported).toHaveLength(3);
+    expect(imported.every((o: { geometry: unknown }) => o.geometry !== null)).toBe(true);
+
+    // re-open: all 5 features still present and selectable
+    const list2 = await get(`/api/admin/shapefile-imports/${importId}/features`);
+    expect(list2.body.total).toBe(5);
   });
 });

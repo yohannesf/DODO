@@ -289,6 +289,45 @@ export type ApiKey = z.infer<typeof apiKeySchema>;
 export const apiKeyCreatedSchema = apiKeySchema.extend({ rawKey: z.string() });
 export type ApiKeyCreated = z.infer<typeof apiKeyCreatedSchema>;
 
+// Shapefile import (spec §16.6).
+export const SHAPEFILE_IMPORT_STATUSES = [
+  'pending',
+  'processing',
+  'complete',
+  'failed',
+] as const;
+export const shapefileImportStatusSchema = z.enum(SHAPEFILE_IMPORT_STATUSES);
+
+// import row as returned by the API (raw_features omitted — it can be huge;
+// fetch features via the paginated endpoint instead).
+export const shapefileImportSchema = z.object({
+  id: z.string().uuid(),
+  programId: z.string().uuid(),
+  orgUnitLevel: z.number().int(),
+  fileName: z.string(),
+  fileRef: z.string(),
+  status: shapefileImportStatusSchema,
+  errorLog: z.unknown().nullable(),
+  nodesCreated: z.number().nullable(),
+  nodesUpdated: z.number().nullable(),
+  importedAt: z.string(),
+  featureCount: z.number().int().optional(),
+});
+export type ShapefileImport = z.infer<typeof shapefileImportSchema>;
+
+export const shapefileFeatureSchema = z.object({
+  index: z.number().int(),
+  name: z.string(),
+  geometryType: z.string().nullable(),
+  properties: z.record(z.unknown()).nullable(),
+});
+export type ShapefileFeatureItem = z.infer<typeof shapefileFeatureSchema>;
+
+export const shapefileApplyBodySchema = z.object({
+  selectedIds: z.array(z.number().int().nonnegative()).min(1),
+  parentId: z.string().uuid().nullable().default(null),
+});
+
 export const orgUnitLevelInputSchema = z.object({
   level: z.number().int().min(1).max(12),
   name: nameSchema,

@@ -758,6 +758,30 @@ export const webhook = pgTable('webhook', {
   lastFiredAt: timestamp('last_fired_at', ts),
 });
 
+// Shapefile imports (spec §16.6) — server-only admin tooling (NOT synced).
+// raw_features preserves every feature for later re-selection.
+export const shapefileImport = pgTable(
+  'shapefile_import',
+  {
+    id: uuid('id').primaryKey(),
+    programId: uuid('program_id')
+      .notNull()
+      .references(() => program.id),
+    orgUnitLevel: integer('org_unit_level').notNull(),
+    fileName: text('file_name').notNull(),
+    fileRef: text('file_ref').notNull(),
+    rawFeatures: jsonb('raw_features').notNull(),
+    // 'pending' | 'processing' | 'complete' | 'failed'
+    status: text('status').notNull(),
+    errorLog: jsonb('error_log'),
+    nodesCreated: integer('nodes_created'),
+    nodesUpdated: integer('nodes_updated'),
+    importedBy: uuid('imported_by'),
+    importedAt: timestamp('imported_at', ts).notNull().defaultNow(),
+  },
+  (t) => [index('shapefile_import_program').on(t.programId)],
+);
+
 // API keys (spec §16.5) — server-only (NOT synced). key_hash = sha256 of the
 // raw key, which is shown once at creation. program_id null = instance-wide.
 export const apiKey = pgTable(
